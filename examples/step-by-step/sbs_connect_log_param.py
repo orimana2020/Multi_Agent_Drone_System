@@ -104,10 +104,10 @@ if __name__ == '__main__':
 
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
 
-        # simple_connect()
+        simple_connect()
+        for i in range(10000):
+            # simple_log(scf, lg_stab)
+        
+            simple_log_async(scf, lg_stab)
 
-        # simple_log(scf, lg_stab)
-
-        # simple_log_async(scf, lg_stab)
-
-        simple_param_async(scf, group, name)
+            simple_param_async(scf, group, name)

@@ -125,6 +125,7 @@ class LogVariable():
     def __str__(self):
         return ('LogVariable: name=%s, store=%s, fetch=%s' %
                 (self.name, LogTocElement.get_cstring_from_id(self.stored_as),
+                
                  LogTocElement.get_cstring_from_id(self.fetch_as)))
 
 

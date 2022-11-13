@@ -35,7 +35,7 @@ import time
 import cflib.crtp
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
-
+from cflib.crazyflie import log
 
 def activate_high_level_commander(scf):
     scf.cf.param.set_value('commander.enHighLevel', '1')
@@ -78,10 +78,11 @@ def run_shared_sequence(scf):
 
 
 uris = {
-    'radio://0/80/2M/E7E7E7E7E7',
-    # 'radio://0/30/2M/E7E7E7E712',
+    'radio://0/80/2M/E7E7E7E7E1',
+    'radio://0/80/2M/E7E7E7E7E2',
     # Add more URIs if you want more copters in the swarm
 }
+
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
@@ -89,7 +90,15 @@ if __name__ == '__main__':
     with Swarm(uris, factory=factory) as swarm:
         swarm.parallel_safe(activate_high_level_commander)
         swarm.reset_estimators()
-        # swarm.parallel_safe(run_shared_sequence)
+        # cf0 = swarm._cfs['radio://0/80/2M/E7E7E7E7E7']
         for i in range(1000):
+            # swarm.my_get_estimated_position(cf0)
+            swarm.get_estimated_positions()
             print(i)
-            print(swarm.get_estimated_positions())
+            print(swarm._positions)
+            # for key in swarm._positions.keys():
+            #     x,y,z = swarm._positions[key]
+            #     print(f'drone: {key}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
+            
+            time.sleep(1)
+            

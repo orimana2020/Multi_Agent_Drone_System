@@ -82,6 +82,9 @@ class Swarm:
         for uri in uris:
             self._cfs[uri] = factory.construct(uri)
 
+        # self.logger = None #ori edit
+
+
     def open_links(self):
         """
         Open links to all individuals in the swarm
@@ -126,12 +129,33 @@ class Swarm:
                 self._positions[scf.cf.link_uri] = SwarmPosition(x, y, z)
                 break
 
+    def my_get_estimated_position(self, scf):
+        if self.logger == None:
+            log_config = LogConfig(name='stateEstimate', period_in_ms=10)
+            log_config.add_variable('stateEstimate.x', 'float')
+            log_config.add_variable('stateEstimate.y', 'float')
+            log_config.add_variable('stateEstimate.z', 'float')
+            self.logger = SyncLogger(scf, log_config)
+            self.logger.connect()
+            print('logger = ',self.logger)
+            
+        for entry in self.logger:
+            if not self.logger._queue.empty():
+                entry = self.logger._queue.queue[-1]
+                print('got updated val')
+            x = entry[1]['stateEstimate.x']
+            y = entry[1]['stateEstimate.y']
+            z = entry[1]['stateEstimate.z']
+            self._positions[scf.cf.link_uri] = [x,y,z] #SwarmPosition(x, y, z)
+            break
+
     def get_estimated_positions(self):
         """
         Return a `dict`, keyed by URI and with the SwarmPosition namedtuples as
         value, with the estimated (x, y, z) of each Crazyflie in the swarm.
         """
-        self.parallel_safe(self.__get_estimated_position)
+        # self.parallel_safe(self.__get_estimated_position)
+        self.parallel_safe(self.my_get_estimated_position)
         return self._positions
 
     def __wait_for_position_estimator(self, scf):
@@ -232,6 +256,9 @@ class Swarm:
         except Exception:
             pass
 
+
+
+
     def parallel_safe(self, func, args_dict=None):
         """
         Execute a function for all Crazyflies in the swarm, in parallel.
@@ -252,11 +279,14 @@ class Swarm:
                 self._process_args_dict(scf, uri, args_dict)
 
             thread = Thread(target=self._thread_function_wrapper, args=args)
-            threads.append(thread)
             thread.start()
-
+            threads.append(thread)
+            
+            
+            
         for thread in threads:
             thread.join()
+    
 
         if reporter.is_error_reported():
             first_error = reporter.errors[0]

@@ -62,6 +62,11 @@ figure8 = [
 ]
 
 
+
+
+
+
+
 class Uploader:
     def __init__(self):
         self._is_done = False
@@ -168,10 +173,10 @@ def upload_trajectory(cf, trajectory_id, trajectory):
 
 def run_sequence(cf, trajectory_id, duration):
     commander = cf.high_level_commander
-
+    
     commander.takeoff(1.0, 2.0)
     time.sleep(3.0)
-    relative = True
+    relative = False
     commander.start_trajectory(trajectory_id, 1.0, relative)
     time.sleep(duration)
     commander.land(0.0, 2.0)
@@ -185,10 +190,13 @@ if __name__ == '__main__':
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
         cf = scf.cf
         trajectory_id = 1
-
+        
         activate_high_level_commander(cf)
         # activate_mellinger_controller(cf)
-        duration = upload_trajectory(cf, trajectory_id, figure8)
+        # duration = upload_trajectory(cf, trajectory_id, figure8)
         print('The sequence is {:.1f} seconds long'.format(duration))
         reset_estimator(cf)
-        run_sequence(cf, trajectory_id, duration)
+        # run_sequence(cf, trajectory_id, duration)
+        cf.high
+        
+        
