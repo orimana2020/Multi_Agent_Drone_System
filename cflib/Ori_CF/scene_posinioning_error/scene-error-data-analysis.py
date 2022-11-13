@@ -1,28 +1,9 @@
+# this code takes data collected from envirnment x,y,z,error, process and visualize it
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D 
 import os
-
-# code to interface X drones and get thier position in world
-
-
-def collect_data(d12gt = 0.5, d23gt = 0.55, d13gt = 0.6, filename='None'):
-    gt_dist_vec = np.array([d12gt , d23gt, d13gt])
-    data = np.array([[0,0,0,0]]) # initiate
-    for i in range(10000):
-        drone1_pos = np.random.rand(1,3) * np.random.randint(0,5) # x y z
-        drone2_pos = np.random.rand(1,3) * np.random.randint(0,5)  # x y z
-        drone3_pos = np.random.rand(1,3) * np.random.randint(0,5)  # x y z
-        d12 = np.linalg.norm(drone1_pos - drone2_pos, ord=2)
-        d23 = np.linalg.norm(drone2_pos - drone3_pos, ord=2)
-        d13 = np.linalg.norm(drone1_pos - drone3_pos, ord=2)
-        dist_vec = np.array([d12, d23, d13])
-        avg_position = (drone1_pos + drone2_pos + drone3_pos)/3 
-        error = np.linalg.norm(gt_dist_vec - dist_vec, ord=2)
-        result = np.append(avg_position, error)
-        data = np.append(data, [result], axis=0)
-    data = np.delete(data, [0], axis=0) # [x,y,z, position_error]
-    np.save(filename, data)
 
 def load_data(filename):
     # str(os.getcwd())+
@@ -64,9 +45,11 @@ def process_data(data, resolution=0.3):
     for fac in factor:
         col.append([fac, 0 ,1-fac]) # red,green,blue
 
+    lps_anchor_position = np.array([[-1.2,-2,0],[-2.4,-2,2.35],[1.03,2.1,0],[-2.4,2.1,2.35],[1.2,-2,0],[1.03,2.1,2.35],[1.2,-2,2.35],[-2.3,2.1,0]])
     fig = plt.figure()
     ax = Axes3D(fig)
     ax.scatter3D(valued_space[:,0],valued_space[:,1],valued_space[:,2],s=30,c=col)
+    ax.scatter3D(lps_anchor_position[:,0],lps_anchor_position[:,1],lps_anchor_position[:,2],s=60,c='green')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
@@ -78,7 +61,6 @@ def process_data(data, resolution=0.3):
 
 if __name__ == '__main__':
     filename='blabla'
-    collect_data(d12gt = 0.25, d23gt = 0.25, d13gt = 0.4, filename='blabla')
     data = load_data(filename)
     process_data(data, resolution=0.3)
     
@@ -86,5 +68,21 @@ if __name__ == '__main__':
 
 
 
-
+# def collect_data(d12gt = 0.5, d23gt = 0.55, d13gt = 0.6, filename='None'):
+#     gt_dist_vec = np.array([d12gt , d23gt, d13gt])
+#     data = np.array([[0,0,0,0]]) # initiate
+#     for i in range(10000):
+#         drone1_pos = np.random.rand(1,3) * np.random.randint(0,5) # x y z
+#         drone2_pos = np.random.rand(1,3) * np.random.randint(0,5)  # x y z
+#         drone3_pos = np.random.rand(1,3) * np.random.randint(0,5)  # x y z
+#         d12 = np.linalg.norm(drone1_pos - drone2_pos, ord=2)
+#         d23 = np.linalg.norm(drone2_pos - drone3_pos, ord=2)
+#         d13 = np.linalg.norm(drone1_pos - drone3_pos, ord=2)
+#         dist_vec = np.array([d12, d23, d13])
+#         avg_position = (drone1_pos + drone2_pos + drone3_pos)/3 
+#         error = np.linalg.norm(gt_dist_vec - dist_vec, ord=2)
+#         result = np.append(avg_position, error)
+#         data = np.append(data, [result], axis=0)
+#     data = np.delete(data, [0], axis=0) # [x,y,z, position_error]
+#     np.save(filename, data)
 

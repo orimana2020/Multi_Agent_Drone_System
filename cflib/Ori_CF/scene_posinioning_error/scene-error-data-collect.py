@@ -1,4 +1,7 @@
 # this function connects to several CF logging data and collect CF relative positions
+# the output is numpy array with each row represents [x,y,z,error] 
+# where x,y,z are coords of average drones position
+# and error is differance between measured distance of drone relative to ground truth
 
 
 import time
@@ -27,7 +30,7 @@ d13gt = 0.6
 gt_dist_vec = np.array([d12gt , d23gt, d13gt])
 filename='data_collect'
 data = np.array([[0,0,0,0]]) # initiate
-
+samples = 10000
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
@@ -36,7 +39,7 @@ if __name__ == '__main__':
         swarm.parallel_safe(activate_high_level_commander)
         swarm.reset_estimators()
         # scf = swarm._cfs['radio://0/80/2M/E7E7E7E7E7']
-        for i in range(1000):
+        for i in range(samples):
             swarm.get_estimated_positions()
             print(i)
             for link_idx in range(len(uri_l)):
