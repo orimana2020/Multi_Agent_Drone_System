@@ -78,11 +78,11 @@ class Swarm:
         self._cfs = {}
         self._is_open = False
         self._positions = dict()
+        self.logger = {}
 
         for uri in uris:
             self._cfs[uri] = factory.construct(uri)
-
-        # self.logger = None #ori edit
+            self.logger[self._cfs[uri]] = None
 
 
     def open_links(self):
@@ -130,18 +130,18 @@ class Swarm:
                 break
 
     def my_get_estimated_position(self, scf):
-        if self.logger == None:
+        if self.logger[scf] == None:
             log_config = LogConfig(name='stateEstimate', period_in_ms=10)
             log_config.add_variable('stateEstimate.x', 'float')
             log_config.add_variable('stateEstimate.y', 'float')
             log_config.add_variable('stateEstimate.z', 'float')
-            self.logger = SyncLogger(scf, log_config)
-            self.logger.connect()
-            print('logger = ',self.logger)
+            self.logger[scf] = SyncLogger(scf, log_config)
+            self.logger[scf].connect()
             
-        for entry in self.logger:
-            if not self.logger._queue.empty():
-                entry = self.logger._queue.queue[-1]
+            
+        for entry in self.logger[scf]:
+            if not self.logger[scf]._queue.empty():
+                entry = self.logger[scf]._queue.queue[-1]
                 print('got updated val')
             x = entry[1]['stateEstimate.x']
             y = entry[1]['stateEstimate.y']

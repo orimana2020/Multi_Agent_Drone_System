@@ -95,10 +95,10 @@ if __name__ == '__main__':
             # swarm.my_get_estimated_position(cf0)
             swarm.get_estimated_positions()
             print(i)
-            print(swarm._positions)
-            # for key in swarm._positions.keys():
-            #     x,y,z = swarm._positions[key]
-            #     print(f'drone: {key}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
+            # print(swarm._positions)
+            for key in swarm._positions.keys():
+                x,y,z = swarm._positions[key]
+                print(f'drone: {key}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
             
             time.sleep(1)
             
