@@ -1,7 +1,8 @@
 import numpy as np
-import os
 
-dic = dict()
-dic['a'] = [1,2,3]
-print(dic)
-print(dic['a'][0])
+
+a = {'2','b','c'}
+print(list(a))
+b = ['2','b','c']
+for l in b:
+    print(l)
