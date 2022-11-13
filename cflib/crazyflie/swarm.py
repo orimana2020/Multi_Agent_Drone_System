@@ -142,7 +142,6 @@ class Swarm:
         for entry in self.logger[scf]:
             if not self.logger[scf]._queue.empty():
                 entry = self.logger[scf]._queue.queue[-1]
-                print('got updated val')
             x = entry[1]['stateEstimate.x']
             y = entry[1]['stateEstimate.y']
             z = entry[1]['stateEstimate.z']

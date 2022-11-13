@@ -9,6 +9,20 @@ def load_data(filename):
     # str(os.getcwd())+
     return np.load(str(os.getcwd())+'/'+filename+'.npy')
 
+def get_steady_state_error(raw_data):
+    return np.sum(raw_data[:1000,3])/1000
+
+def preprocess_data(raw_data, steady_state_error, threshold_error = 1):
+    data_new = np.array([[0,0,0,0]]) # initiate
+    for row in raw_data:
+        error = row[3] - steady_state_error
+        if error < 0:
+            error = 0
+        if error < threshold_error:
+            data_new = np.append(data_new, [[row[0], row[1], row[2], error]], axis=0)
+    data_new = np.delete(data_new, [0], axis=0) # delete initiated row
+    return data_new
+
 def process_data(data, resolution=0.3):
     x_m_min, x_m_max = np.min(data[:,0]), np.max(data[:,0])
     y_m_min, y_m_max = np.min(data[:,1]), np.max(data[:,1])
@@ -45,6 +59,9 @@ def process_data(data, resolution=0.3):
     for fac in factor:
         col.append([fac, 0 ,1-fac]) # red,green,blue
 
+
+
+    plt.hist(data[:,3])
     lps_anchor_position = np.array([[-1.2,-2,0],[-2.4,-2,2.35],[1.03,2.1,0],[-2.4,2.1,2.35],[1.2,-2,0],[1.03,2.1,2.35],[1.2,-2,2.35],[-2.3,2.1,0]])
     fig = plt.figure()
     ax = Axes3D(fig)
@@ -60,9 +77,13 @@ def process_data(data, resolution=0.3):
 
 
 if __name__ == '__main__':
-    filename='blabla'
-    data = load_data(filename)
-    process_data(data, resolution=0.3)
+    filename='first_data_collection_2'
+    raw_data = load_data(filename)
+    steady_state_error = get_steady_state_error(raw_data)
+    print('steady state error = ', steady_state_error)
+    prepocessed_data = preprocess_data(raw_data, steady_state_error, threshold_error = 0.5)
+    print(f'preprocessed data = {len(prepocessed_data)}, precent of approved data = {len(prepocessed_data)*100/len(raw_data): .2f}')
+    process_data(prepocessed_data, resolution=0.1)
     
 
 

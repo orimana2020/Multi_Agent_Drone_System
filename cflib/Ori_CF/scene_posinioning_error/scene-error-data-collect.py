@@ -16,6 +16,7 @@ def activate_high_level_commander(scf):
 uri_1 = 'radio://0/80/2M/E7E7E7E7E1'
 uri_2 = 'radio://0/80/2M/E7E7E7E7E2'
 uri_3 = 'radio://0/80/2M/E7E7E7E7E3'
+uri_4 = 'radio://0/80/2M/E7E7E7E7E4'
 uris = {uri_1, uri_2, uri_3}
 uri_l = [uri_1, uri_2, uri_3]
 
@@ -24,13 +25,15 @@ for uri in uris:
     drone_pos.append([])
 
 # set ground truth distance between drones
-d12gt = 0.5
-d23gt = 0.55
-d13gt = 0.6
-gt_dist_vec = np.array([d12gt , d23gt, d13gt])
-filename='data_collect'
+d01gt = 0.865 # 1-2
+d12gt = 0.84 # 2-3
+d02gt = 0.65 # 1-3 
+gt_dist_vec = np.array([d01gt , d12gt, d02gt])
+filename='first_data_collection_3'
 data = np.array([[0,0,0,0]]) # initiate
-samples = 10000
+sample_time = 240 # [sec]
+samples = 30000
+# sleep time = sample_time / samples
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
@@ -44,18 +47,19 @@ if __name__ == '__main__':
             print(i)
             for link_idx in range(len(uri_l)):
                 x,y,z = swarm._positions[uri_l[link_idx]]
-                print(f'drone: {link_idx}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
+                # print(f'drone: {link_idx}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
                 drone_pos[link_idx] = np.array([x,y,z])
               
+            d01 = np.linalg.norm(drone_pos[0] - drone_pos[1], ord=2)
             d12 = np.linalg.norm(drone_pos[1] - drone_pos[2], ord=2)
-            d23 = np.linalg.norm(drone_pos[2] - drone_pos[3], ord=2)
-            d13 = np.linalg.norm(drone_pos[1] - drone_pos[3], ord=2)
-            dist_vec_measured = np.array([d12, d23, d13])
+            d02 = np.linalg.norm(drone_pos[0] - drone_pos[2], ord=2)
+            dist_vec_measured = np.array([d01, d12, d02])
             avg_position = (drone_pos[0] + drone_pos[1] + drone_pos[2]) / 3 
             error = np.linalg.norm(gt_dist_vec - dist_vec_measured, ord=2)
             result = np.append(avg_position, error)
             data = np.append(data, [result], axis=0)
-            time.sleep(1)
+            print('error = ', error)
+            time.sleep(0.001)
 
         data = np.delete(data, [0], axis=0) # delete initiated row
         np.save(filename, data)

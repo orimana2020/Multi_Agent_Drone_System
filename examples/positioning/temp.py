@@ -1,8 +1,6 @@
 import numpy as np
 
 
-a = {'2','b','c'}
-print(list(a))
-b = ['2','b','c']
-for l in b:
-    print(l)
+a = np.array([[1,2,3],[4,5,6],[7,8,9]])
+for row in a:
+    print(row[2])
