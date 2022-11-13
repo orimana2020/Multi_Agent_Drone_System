@@ -83,6 +83,7 @@ if __name__ == '__main__':
     print('steady state error = ', steady_state_error)
     prepocessed_data = preprocess_data(raw_data, steady_state_error, threshold_error = 0.5)
     print(f'preprocessed data = {len(prepocessed_data)}, precent of approved data = {len(prepocessed_data)*100/len(raw_data): .2f}')
+    print(f'min error = {np.min(prepocessed_data[:,3])} [m], max error = {np.max(prepocessed_data[:,3])} [m]')
     process_data(prepocessed_data, resolution=0.1)
     
 
