@@ -10,7 +10,7 @@ and how to send setpoints using the high level commander.
 """
 import sys
 import time
-
+import numpy as np
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
@@ -21,8 +21,8 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
 
 # URI to the Crazyflie to connect to
-uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-
+uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E1')
+from generate_bezier_trajectory import Generate_Trajectory
 # The trajectory to fly
 # See https://github.com/whoenig/uav_trajectories for a tool to generate
 # trajectories
@@ -40,6 +40,7 @@ figure8 = [
     [0.710000, -0.923935, 0.447832, 0.627381, -0.259808, -0.042325, -0.032258, 0.001420, 0.005294, 0.288570, 0.873350, -0.515586, -0.730207, -0.026023, 0.288755, 0.215678, -0.148061, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],  # noqa
     [1.053185, -0.398611, 0.850510, -0.144007, -0.485368, -0.079781, 0.176330, 0.234482, -0.153567, 0.447039, -0.532729, -0.855023, 0.878509, 0.775168, -0.391051, -0.713519, 0.391628, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],  # noqa
 ]
+
 
 
 
@@ -152,24 +153,36 @@ def run_sequence(cf, trajectory_id, duration):
     
     commander.takeoff(1.0, 2.0)
     time.sleep(3.0)
-    relative = False
+    relative = True
     commander.start_trajectory(trajectory_id, 1.0, relative)
     time.sleep(duration)
     commander.land(0.0, 2.0)
     time.sleep(2)
     commander.stop()
 
+def get_original_wp_line():
+    wp_orig = []
+    for x in range(12):
+        wp_orig.append([0.1*x,0,1]) 
+    wp_orig = np.array(wp_orig)
+    return wp_orig
+wp = get_original_wp_line()
+traj = Generate_Trajectory(wp,velocity=1,plotting=0)
+traj_coef = traj.poly_coef
+
+
+
+
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
-
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
         cf = scf.cf
         trajectory_id = 1
         activate_high_level_commander(cf)
         # activate_mellinger_controller(cf)
-        duration = upload_trajectory(cf, trajectory_id, figure8)
-        print('The sequence is {:.1f} seconds long'.format(duration))
+        duration = upload_trajectory(cf, trajectory_id, traj_coef)
+        # print('The sequence is {:.1f} seconds long'.format(traj_coef))
         reset_estimator(cf)
         run_sequence(cf, trajectory_id, duration)
         

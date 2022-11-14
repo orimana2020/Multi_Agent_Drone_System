@@ -303,121 +303,131 @@ class Segment:
         return result
 
 
+class Generate_Trajectory(object):
+    def __init__(self, waypoints, velocity=1,plotting=0):
+        wp = self.get_smooth_path(waypoints)
+        yaw = self.get_yaw(wp)
+        nodes = self.generate_nodes(wp, yaw)
+        segments_time = self.get_segments_time(wp, velocity)
+        segments = self.generate_segments(nodes, segments_time)
+        self.poly_coef = self.get_polynom_coeff(segments)
+        if plotting == 1:
+            self.plot_trajectory(self.poly_coef, wp, waypoints, res = 2)
+            
+
+    def cntl_pnt(self, current, next):
+        dic_vec = next - current
+        size = np.linalg.norm(dic_vec, ord=2)
+        normilized_dir_vec = dic_vec / size
+        size_cp = size / 8
+        return current + normilized_dir_vec * size_cp
 
 
-def cntl_pnt(current, next):
-    dic_vec = next - current
-    size = np.linalg.norm(dic_vec, ord=2)
-    normilized_dir_vec = dic_vec / size
-    size_cp = size / 8
-    return current + normilized_dir_vec * size_cp
+
+    def get_smooth_path(self, path):
+        tck, _ = interpolate.splprep([path[:,0], path[:,1], path[:,2]], s=10)  
+        u_fine = np.linspace(0,1,int(min(len(path), 30))) # determine number of points in smooth path 
+        smooth_path = interpolate.splev(u_fine, tck)
+        return np.transpose(np.array(smooth_path))
+
+    def get_segments_time(self, wp, velocity=1):
+        segment_time = []
+        for i in range(len(wp)-1):
+            dist = np.linalg.norm(wp[i+1]-wp[i], ord=2)
+            t = dist / velocity
+            segment_time.append(t)
+        return segment_time
+
+    def get_yaw(self, wp):
+        yaws = []
+        for i in range(len(wp)-1):
+            dx = wp[i+1][0] - wp[i][0]
+            dy = wp[i+1][1]- wp[i][1]
+            yaw = np.arctan2(dy,dx)
+            yaws.append(yaw)
+        return yaws
 
 
-
-def get_smooth_path(path):
-    tck, _ = interpolate.splprep([path[:,0], path[:,1], path[:,2]], s=10)  
-    u_fine = np.linspace(0,1,int(min(len(path), 30))) # determine number of points in smooth path 
-    smooth_path = interpolate.splev(u_fine, tck)
-    return np.transpose(np.array(smooth_path))
-
-def get_segments_time(wp,velocity=1):
-    segment_time = []
-    for i in range(len(wp)-1):
-        dist = np.linalg.norm(wp[i+1]-wp[i], ord=2)
-        t = dist / velocity
-        segment_time.append(t)
-    return segment_time
-
-def get_yaw(wp):
-    yaws = []
-    for i in range(len(wp)-1):
-        dx = wp[i+1][0] - wp[i][0]
-        dy = wp[i+1][1]- wp[i][1]
-        yaw = np.arctan2(dy,dx)
-        yaws.append(yaw)
-    return yaws
-
-
-def generate_nodes(wp, yaw):
-    # init
-    nodes = []
-    wp1 = wp[0]
-    node1 = Node((wp1[0], wp1[1], wp1[2], yaw[0]))
-    nodes.append(node1)
-    # middle
-    for i in range(1, len(wp)-1):
-        wp1 = wp[i]
-        next = wp[i+1]
-        cp = cntl_pnt(wp1, next)
-        node = Node((wp1[0], wp1[1], wp1[2], yaw[i]), q1=(cp[0], cp[1], cp[2], yaw[i]))
+    def generate_nodes(self, wp, yaw):
+        # init
+        nodes = []
+        wp1 = wp[0]
+        node1 = Node((wp1[0], wp1[1], wp1[2], yaw[0]))
+        nodes.append(node1)
+        # middle
+        for i in range(1, len(wp)-1):
+            wp1 = wp[i]
+            next = wp[i+1]
+            cp = self.cntl_pnt(wp1, next)
+            node = Node((wp1[0], wp1[1], wp1[2], yaw[i]), q1=(cp[0], cp[1], cp[2], yaw[i]))
+            nodes.append(node)
+        # end
+        wp1 = wp[-1]
+        node = Node((wp1[0], wp1[1], wp1[2], yaw[-1]))
         nodes.append(node)
-    # end
-    wp1 = wp[-1]
-    node = Node((wp1[0], wp1[1], wp1[2], yaw[-1]))
-    nodes.append(node)
-    return nodes
+        return nodes
 
-def generate_segments(nodes, segments_time):
-    segments = []
-    for i in range(len(nodes)-1):
-        segments.append(Segment(nodes[i], nodes[i+1], segments_time[i]))
-    return segments
+    def generate_segments(self, nodes, segments_time):
+        segments = []
+        for i in range(len(nodes)-1):
+            segments.append(Segment(nodes[i], nodes[i+1], segments_time[i]))
+        return segments
 
 
-def get_polynom_coeff(segments): # paste poly_coef in high level commander
-    poly_coef = []
-    for s in segments:
-        poly_coef.append(s.get_coef())
-    return poly_coef
+    def get_polynom_coeff(self, segments): # paste poly_coef in high level commander
+        poly_coef = []
+        for s in segments:
+            poly_coef.append(s.get_coef())
+        return poly_coef
 
 
-def plot_trajectory(poly_coef, wp ,wp_orig, res):
-    poly_coef = np.array(poly_coef)
-    x_tot = np.array([])
-    y_tot = np.array([])
-    z_tot = np.array([])
-    yaw_tot = np.array([])
-    for segment in range(len(poly_coef)):
-        row = poly_coef[segment]
-        durition = row[0]
-        x_c = row[1:9]
-        y_c = row[9:17]
-        z_c = row[17:25]
-        yaw_c = row[25:]
-        t_vec = np.linspace(0,durition, res)
-        x = 0
-        y = 0
-        z = 0
-        yaw = 0
-        for i in range(len(x_c)):
-            x += x_c[i]*t_vec**[i]
-            y += y_c[i]*t_vec**[i]
-            z += z_c[i]*t_vec**[i]
-            yaw += yaw_c[i]*t_vec**[i]
-        x_tot = np.append(x_tot, x, axis = None)
-        y_tot = np.append(y_tot, y, axis = None)
-        z_tot = np.append(z_tot, z, axis = None)
-        yaw_tot = np.append(yaw_tot, yaw,axis= None)
-    
-    # yaw decoder
-    r = 0.1
-    # yaw_rad = np.deg2rad(yaw_tot)
-    dy = r * np.sin(yaw_tot)
-    dx = r * np.cos(yaw_tot)
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    for i in range(len(yaw_tot)):
-        ax.plot([x_tot[i], x_tot[i]+dx[i] ], [y_tot[i], y_tot[i]+ dy[i] ], [z_tot[i], z_tot[i]], c='c')
-    ax.scatter3D(x_tot, y_tot, z_tot)
-    ax.scatter3D(wp_orig[:,0],wp_orig[:,1],wp_orig[:,2],s=40,c='green')
-    ax.scatter3D(wp[:,0],wp[:,1],wp[:,2],s=40,c='red')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    ax.set_xlim(0,10)
-    ax.set_ylim(-5,5)
-    ax.set_zlim(0,5)
-    plt.show()
+    def plot_trajectory(self, poly_coef, wp ,wp_orig, res):
+        poly_coef = np.array(poly_coef)
+        x_tot = np.array([])
+        y_tot = np.array([])
+        z_tot = np.array([])
+        yaw_tot = np.array([])
+        for segment in range(len(poly_coef)):
+            row = poly_coef[segment]
+            durition = row[0]
+            x_c = row[1:9]
+            y_c = row[9:17]
+            z_c = row[17:25]
+            yaw_c = row[25:]
+            t_vec = np.linspace(0,durition, res)
+            x = 0
+            y = 0
+            z = 0
+            yaw = 0
+            for i in range(len(x_c)):
+                x += x_c[i]*t_vec**[i]
+                y += y_c[i]*t_vec**[i]
+                z += z_c[i]*t_vec**[i]
+                yaw += yaw_c[i]*t_vec**[i]
+            x_tot = np.append(x_tot, x, axis = None)
+            y_tot = np.append(y_tot, y, axis = None)
+            z_tot = np.append(z_tot, z, axis = None)
+            yaw_tot = np.append(yaw_tot, yaw,axis= None)
+        
+        # yaw decoder
+        r = 0.1
+        # yaw_rad = np.deg2rad(yaw_tot)
+        dy = r * np.sin(yaw_tot)
+        dx = r * np.cos(yaw_tot)
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        for i in range(len(yaw_tot)):
+            ax.plot([x_tot[i], x_tot[i]+dx[i] ], [y_tot[i], y_tot[i]+ dy[i] ], [z_tot[i], z_tot[i]], c='c')
+        ax.scatter3D(x_tot, y_tot, z_tot)
+        ax.scatter3D(wp_orig[:,0],wp_orig[:,1],wp_orig[:,2],s=40,c='green')
+        ax.scatter3D(wp[:,0],wp[:,1],wp[:,2],s=40,c='red')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.set_xlim(0,10)
+        ax.set_ylim(-5,5)
+        ax.set_zlim(0,5)
+        plt.show()
 
 
 
@@ -426,43 +436,25 @@ def plot_trajectory(poly_coef, wp ,wp_orig, res):
 def get_original_wp_line():
     wp_orig = []
     for x in range(10):
-        if x%2 == 0:
-            y = 0
-        elif x%3 == 0:
-            y=2
-        else:
-            y = 1
-        wp_orig.append([x,y,1]) 
+        wp_orig.append([0.1*x,0,1]) 
     wp_orig = np.array(wp_orig)
     return wp_orig
 
 
 
-def get_original_wp_spiral():
-    rad = 0.7
-    t = np.linspace(0, 3*2*np.pi, 20)
-    wp_orig = np.array([[rad * np.sin(t[0]), rad * np.cos(t[0]), t[0]/6]])
-    for i in range(1, len(t)):
-        wp_orig = np.append(wp_orig, np.array([[rad * np.sin(t[i]), rad * np.cos(t[i]), t[i]/6]]) ,axis=0) 
-    return wp_orig
+# def get_original_wp_spiral():
+#     rad = 0.7
+#     t = np.linspace(0, 3*2*np.pi, 20)
+#     wp_orig = np.array([[rad * np.sin(t[0]), rad * np.cos(t[0]), t[0]/6]])
+#     for i in range(1, len(t)):
+#         wp_orig = np.append(wp_orig, np.array([[rad * np.sin(t[i]), rad * np.cos(t[i]), t[i]/6]]) ,axis=0) 
+#     return wp_orig
 
 
 if __name__ == '__main__':
-    mode = 'Astar interpolaton' #'Astar interpolaton'
-
     wp_orig = get_original_wp_line()
-    velocity = 1 #[m/s]
-    if mode == 'Astar interpolaton':
-        wp = get_smooth_path(wp_orig)
-    else:
-        wp = wp_orig
-    yaw = get_yaw(wp)
-    nodes = generate_nodes(wp, yaw)
-    segments_time = get_segments_time(wp,velocity)
-    segments = generate_segments(nodes, segments_time)
-    poly_coef = get_polynom_coeff(segments)
-    print(poly_coef)
-    plot_trajectory(poly_coef,wp,wp_orig, res = 7)
+    trajectory = Generate_Trajectory(wp_orig,velocity=1,plotting=1)
+    
 
 
 
