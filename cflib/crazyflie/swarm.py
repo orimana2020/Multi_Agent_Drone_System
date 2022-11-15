@@ -147,7 +147,7 @@ class Swarm:
             z = entry[1]['stateEstimate.z']
             self._positions[scf.cf.link_uri] = [x,y,z] #SwarmPosition(x, y, z)
             break
-
+           
     def get_estimated_positions(self):
         """
         Return a `dict`, keyed by URI and with the SwarmPosition namedtuples as
@@ -156,6 +156,7 @@ class Swarm:
         # self.parallel_safe(self.__get_estimated_position)
         self.parallel_safe(self.my_get_estimated_position)
         return self._positions
+  
 
     def __wait_for_position_estimator(self, scf):
         log_config = LogConfig(name='Kalman Variance', period_in_ms=500)

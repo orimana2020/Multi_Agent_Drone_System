@@ -343,7 +343,10 @@ class Generate_Trajectory(object):
         for i in range(len(wp)-1):
             dx = wp[i+1][0] - wp[i][0]
             dy = wp[i+1][1]- wp[i][1]
-            yaw = np.arctan2(dy,dx)
+            if dx < 0:
+               yaw = np.arctan2(-dy,-dx) 
+            else:
+                yaw = np.arctan2(dy,dx)
             yaws.append(yaw)
         return yaws
 
@@ -424,8 +427,8 @@ class Generate_Trajectory(object):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')
-        ax.set_xlim(0,10)
-        ax.set_ylim(-5,5)
+        ax.set_xlim(-1,1)
+        ax.set_ylim(-1,1)
         ax.set_zlim(0,5)
         plt.show()
 
@@ -433,27 +436,22 @@ class Generate_Trajectory(object):
 
 # ---------------------------------------------- examples
 
-def get_original_wp_line():
+def get_original_wp_line(is_reversed=False):
     wp_orig = []
     for x in range(10):
-        wp_orig.append([0.1*x,0,1]) 
+        wp_orig.append([0.1*x, 0, 1]) 
     wp_orig = np.array(wp_orig)
+    if is_reversed:
+        return wp_orig[::-1]
     return wp_orig
 
 
 
-# def get_original_wp_spiral():
-#     rad = 0.7
-#     t = np.linspace(0, 3*2*np.pi, 20)
-#     wp_orig = np.array([[rad * np.sin(t[0]), rad * np.cos(t[0]), t[0]/6]])
-#     for i in range(1, len(t)):
-#         wp_orig = np.append(wp_orig, np.array([[rad * np.sin(t[i]), rad * np.cos(t[i]), t[i]/6]]) ,axis=0) 
-#     return wp_orig
-
-
 if __name__ == '__main__':
-    wp_orig = get_original_wp_line()
-    trajectory = Generate_Trajectory(wp_orig,velocity=1,plotting=1)
+    wp_orig = get_original_wp_line(is_reversed=False)
+    print(wp_orig)
+    trajectory = Generate_Trajectory(wp_orig, velocity=1, plotting=0)
+    print(len(trajectory.poly_coef))
     
 
 

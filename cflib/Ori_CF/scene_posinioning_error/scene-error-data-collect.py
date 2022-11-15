@@ -17,8 +17,15 @@ uri_1 = 'radio://0/80/2M/E7E7E7E7E1'
 uri_2 = 'radio://0/80/2M/E7E7E7E7E2'
 uri_3 = 'radio://0/80/2M/E7E7E7E7E3'
 uri_4 = 'radio://0/80/2M/E7E7E7E7E4'
+
+mode = 'debug'
 uris = {uri_1, uri_2, uri_3}
 uri_l = [uri_1, uri_2, uri_3]
+if mode == 'debug':
+    uris = {uri_1}
+    uri_l = [uri_1]
+
+
 
 drone_pos = []
 for uri in uris:
@@ -43,24 +50,24 @@ if __name__ == '__main__':
         swarm.reset_estimators()
         # scf = swarm._cfs['radio://0/80/2M/E7E7E7E7E7']
         for i in range(samples):
-            swarm.get_estimated_positions()
+            swarm.get_estimated_positions() #position from kalman
             print(i)
             for link_idx in range(len(uri_l)):
                 x,y,z = swarm._positions[uri_l[link_idx]]
-                # print(f'drone: {link_idx}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
+                print(f'drone: {link_idx}, x ={x: .3f}, y ={y: .3f}, z ={z: .3f}')
                 drone_pos[link_idx] = np.array([x,y,z])
-              
-            d01 = np.linalg.norm(drone_pos[0] - drone_pos[1], ord=2)
-            d12 = np.linalg.norm(drone_pos[1] - drone_pos[2], ord=2)
-            d02 = np.linalg.norm(drone_pos[0] - drone_pos[2], ord=2)
-            dist_vec_measured = np.array([d01, d12, d02])
-            avg_position = (drone_pos[0] + drone_pos[1] + drone_pos[2]) / 3 
-            error = np.linalg.norm(gt_dist_vec - dist_vec_measured, ord=2)
-            result = np.append(avg_position, error)
-            data = np.append(data, [result], axis=0)
-            print('error = ', error)
-            time.sleep(0.001)
-
-        data = np.delete(data, [0], axis=0) # delete initiated row
-        np.save(filename, data)
+            if mode != 'debug':  
+                d01 = np.linalg.norm(drone_pos[0] - drone_pos[1], ord=2)
+                d12 = np.linalg.norm(drone_pos[1] - drone_pos[2], ord=2)
+                d02 = np.linalg.norm(drone_pos[0] - drone_pos[2], ord=2)
+                dist_vec_measured = np.array([d01, d12, d02])
+                avg_position = (drone_pos[0] + drone_pos[1] + drone_pos[2]) / 3 
+                error = np.linalg.norm(gt_dist_vec - dist_vec_measured, ord=2)
+                result = np.append(avg_position, error)
+                data = np.append(data, [result], axis=0)
+                print('error = ', error)
+            time.sleep(0.2)
+        if mode != 'debug':
+            data = np.delete(data, [0], axis=0) # delete initiated row
+            np.save(filename, data)
 
