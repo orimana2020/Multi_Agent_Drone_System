@@ -1,13 +1,4 @@
 
-"""
-Simple example that connects to one crazyflie (check the address at the top
-and update it to your crazyflie address) and uses the high level commander
-to send setpoints and trajectory to fly a figure 8.
-
-This example is intended to work with any positioning system (including LPS).
-It aims at documenting how to set the Crazyflie in position control mode
-and how to send setpoints using the high level commander.
-"""
 import sys
 import time
 import numpy as np
@@ -19,7 +10,7 @@ from cflib.crazyflie.mem import Poly4D
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
-from generate_bezier_trajectory import Generate_Trajectory
+from cflib.Ori_CF.fly_CF.Trajectory import Generate_Trajectory
 
 
 
@@ -37,7 +28,7 @@ class Uploader:
             time.sleep(0.2)
 
         return self._success
-
+        
     def _upload_done(self, mem, addr):
         print('Data uploaded')
         self._is_done = True
@@ -66,24 +57,18 @@ def wait_for_position_estimator(scf):
     with SyncLogger(scf, log_config) as logger:
         for log_entry in logger:
             data = log_entry[1]
-
             var_x_history.append(data['kalman.varPX'])
             var_x_history.pop(0)
             var_y_history.append(data['kalman.varPY'])
             var_y_history.pop(0)
             var_z_history.append(data['kalman.varPZ'])
             var_z_history.pop(0)
-
             min_x = min(var_x_history)
             max_x = max(var_x_history)
             min_y = min(var_y_history)
             max_y = max(var_y_history)
             min_z = min(var_z_history)
             max_z = max(var_z_history)
-
-            # print("{} {} {}".
-            #       format(max_x - min_x, max_y - min_y, max_z - min_z))
-
             if (max_x - min_x) < threshold and (
                     max_y - min_y) < threshold and (
                     max_z - min_z) < threshold:
@@ -94,7 +79,6 @@ def reset_estimator(cf):
     cf.param.set_value('kalman.resetEstimation', '1')
     time.sleep(0.1)
     cf.param.set_value('kalman.resetEstimation', '0')
-
     wait_for_position_estimator(cf)
 
 
@@ -145,7 +129,7 @@ def run_sequence(cf):
     commander = cf.high_level_commander
     commander.takeoff(1.0, 2.0)
     time.sleep(2.0)  
-    
+
     for _ in range(5):
     # go forward
         execute_trajectory(commander, wp = get_original_wp_line())
@@ -173,10 +157,8 @@ if __name__ == '__main__':
     cflib.crtp.init_drivers()
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
         cf = scf.cf
-        trajectory_id = 1
         activate_high_level_commander(cf)
         # activate_mellinger_controller(cf)
-        # print('The sequence is {:.1f} seconds long'.format(traj_coef))
         reset_estimator(cf)
         run_sequence(cf)
         

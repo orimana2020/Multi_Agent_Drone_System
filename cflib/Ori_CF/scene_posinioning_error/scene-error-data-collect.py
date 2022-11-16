@@ -18,7 +18,9 @@ uri_2 = 'radio://0/80/2M/E7E7E7E7E2'
 uri_3 = 'radio://0/80/2M/E7E7E7E7E3'
 uri_4 = 'radio://0/80/2M/E7E7E7E7E4'
 
-mode = 'debug'
+mode = 'debug' # debug single drone
+# mode = 'collect' # For collecting data from multiple drones
+
 uris = {uri_1, uri_2, uri_3}
 uri_l = [uri_1, uri_2, uri_3]
 if mode == 'debug':

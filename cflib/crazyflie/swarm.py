@@ -22,7 +22,6 @@
 import time
 from collections import namedtuple
 from threading import Thread
-
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
@@ -35,7 +34,6 @@ class _Factory:
     """
     Default Crazyflie factory class.
     """
-
     def construct(self, uri):
         return SyncCrazyflie(uri)
 
@@ -45,7 +43,6 @@ class CachedCfFactory:
     Factory class that creates Crazyflie instances with TOC caching
     to reduce connection time.
     """
-
     def __init__(self, ro_cache=None, rw_cache=None):
         self.ro_cache = ro_cache
         self.rw_cache = rw_cache
@@ -69,7 +66,6 @@ class Swarm:
         """
         Constructs a Swarm instance and instances used to connect to the
         Crazyflies
-
         :param uris: A set of uris to use when connecting to the Crazyflies in
         the swarm
         :param factory: A factory class used to create the instances that are
@@ -163,31 +159,25 @@ class Swarm:
         log_config.add_variable('kalman.varPX', 'float')
         log_config.add_variable('kalman.varPY', 'float')
         log_config.add_variable('kalman.varPZ', 'float')
-
         var_y_history = [1000] * 10
         var_x_history = [1000] * 10
         var_z_history = [1000] * 10
-
         threshold = 0.001
-
         with SyncLogger(scf, log_config) as logger:
             for log_entry in logger:
                 data = log_entry[1]
-
                 var_x_history.append(data['kalman.varPX'])
                 var_x_history.pop(0)
                 var_y_history.append(data['kalman.varPY'])
                 var_y_history.pop(0)
                 var_z_history.append(data['kalman.varPZ'])
                 var_z_history.pop(0)
-
                 min_x = min(var_x_history)
                 max_x = max(var_x_history)
                 min_y = min(var_y_history)
                 max_y = max(var_y_history)
                 min_z = min(var_z_history)
                 max_z = max(var_z_history)
-
                 if (max_x - min_x) < threshold and (
                         max_y - min_y) < threshold and (
                         max_z - min_z) < threshold:
@@ -205,59 +195,35 @@ class Swarm:
         Reset estimator on all members of the swarm and wait for a stable
         positions. Blocks until position estimators finds a position.
         """
+        print('reseting estimator...')
         self.parallel_safe(self.__reset_estimator)
 
     def sequential(self, func, args_dict=None):
-        """
-        Execute a function for all Crazyflies in the swarm, in sequence.
-
-        The first argument of the function that is passed in will be a
-        SyncCrazyflie instance connected to the Crazyflie to operate on.
-        A list of optional parameters (per Crazyflie) may follow defined by
-        the `args_dict`. The dictionary is keyed on URI and has a list of
-        parameters as value.
-
-        Example:
-        ```python
-        def my_function(scf, optional_param0, optional_param1)
-            ...
-
-        args_dict = {
-            URI0: [optional_param0_cf0, optional_param1_cf0],
-            URI1: [optional_param0_cf1, optional_param1_cf1],
-            ...
-        }
-
-
-        swarm.sequential(my_function, args_dict)
-        ```
-
-        :param func: The function to execute
-        :param args_dict: Parameters to pass to the function
-        """
         for uri, cf in self._cfs.items():
             args = self._process_args_dict(cf, uri, args_dict)
             func(*args)
 
     def parallel(self, func, args_dict=None):
-        """
-        Execute a function for all Crazyflies in the swarm, in parallel.
-        One thread per Crazyflie is started to execute the function. The
-        threads are joined at the end. Exceptions raised by the threads are
-        ignored.
-
-        For a more detailed description of the arguments, see `sequential()`
-
-        :param func: The function to execute
-        :param args_dict: Parameters to pass to the function
-        """
         try:
             self.parallel_safe(func, args_dict)
         except Exception:
             pass
 
 
-
+    def trajectory_to_drone(self, func, uri, waypoints ,args_dict=None):
+        reporter = self.Reporter()
+        args = [func, reporter, self._cfs[uri] , waypoints]
+        # daemon=True allows the main thread keep running 
+        thread = Thread(target=self._thread_function_wrapper, args=args, daemon=True)
+        thread.start()
+        thread.is_alive
+        if reporter.is_error_reported():
+            first_error = reporter.errors[0]
+            raise Exception('One or more threads raised an exception when '
+                            'executing parallel task') from first_error            
+            
+        return thread    
+            
 
     def parallel_safe(self, func, args_dict=None):
         """
@@ -265,9 +231,7 @@ class Swarm:
         One thread per Crazyflie is started to execute the function. The
         threads are joined at the end and if one or more of the threads raised
         an exception this function will also raise an exception.
-
         For a more detailed description of the arguments, see `sequential()`
-
         :param func: The function to execute
         :param args_dict: Parameters to pass to the function
         """

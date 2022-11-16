@@ -1,19 +1,15 @@
 
-"""
-Example of how to generate trajectories for the High Level commander using
-Bezier curves. The output from this script is intended to be pasted into the
-autonomous_sequence_high_level.py example.
-
-This code uses Bezier curves of degree 7, that is with 8 control points.
-See https://en.wikipedia.org/wiki/B%C3%A9zier_curve
-
-All coordinates are (x, y, z, yaw)
-"""
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D 
-import numpy as np
 from scipy import interpolate
+import time
+import sys
+import numpy as np
+from cflib.crazyflie.mem import MemoryElement
+from cflib.crazyflie.mem import Poly4D
+
+
 
 class Node:
     """
@@ -432,6 +428,63 @@ class Generate_Trajectory(object):
         ax.set_zlim(0,5)
         plt.show()
 
+
+class Uploader:
+    def __init__(self):
+        self._is_done = False
+        self._success = True
+
+    def upload(self, trajectory_mem):
+        print('Uploading data')
+        trajectory_mem.write_data(self._upload_done, write_failed_cb=self._upload_failed)
+
+        while not self._is_done:
+            time.sleep(0.2)
+
+        return self._success
+        
+    def _upload_done(self, mem, addr):
+        print('Data uploaded')
+        self._is_done = True
+        self._success = True
+
+    def _upload_failed(self, mem, addr):
+        print('Data upload failed')
+        self._is_done = True
+        self._success = False
+
+
+def upload_trajectory(cf,trajectory_id ,trajectory):
+    trajectory_mem = cf.mem.get_mems(MemoryElement.TYPE_TRAJ)[0]
+    trajectory_mem.trajectory = []
+
+    total_duration = 0
+    for row in trajectory:
+        duration = row[0]
+        x = Poly4D.Poly(row[1:9])
+        y = Poly4D.Poly(row[9:17])
+        z = Poly4D.Poly(row[17:25])
+        yaw = Poly4D.Poly(row[25:33])
+        trajectory_mem.trajectory.append(Poly4D(duration, x, y, z, yaw))
+        total_duration += duration
+
+    upload_result = Uploader().upload(trajectory_mem)
+    if not upload_result:
+        print('Upload failed, aborting!')
+        sys.exit(1)
+    cf.high_level_commander.define_trajectory(trajectory_id, 0, len(trajectory_mem.trajectory))
+    return total_duration
+
+def execute_trajectory(commander, wp):
+    try:
+        trajectory_id = 1
+        traj = Generate_Trajectory(wp, velocity=1, plotting=0)
+        traj_coef = traj.poly_coef
+        duration = upload_trajectory(cf, trajectory_id ,traj_coef)
+        commander.start_trajectory(trajectory_id, 1.0, False)
+        time.sleep(duration)
+    except:
+        pass
 
 
 # ---------------------------------------------- examples
