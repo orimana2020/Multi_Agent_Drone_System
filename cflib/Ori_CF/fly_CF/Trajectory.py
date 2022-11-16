@@ -300,9 +300,9 @@ class Segment:
 
 
 class Generate_Trajectory(object):
-    def __init__(self, waypoints, velocity=1,plotting=0):
+    def __init__(self, waypoints, velocity=1,plotting=0, force_zero_yaw = False):
         wp = self.get_smooth_path(waypoints)
-        yaw = self.get_yaw(wp)
+        yaw = self.get_yaw(wp,force_zero_yaw)
         nodes = self.generate_nodes(wp, yaw)
         segments_time = self.get_segments_time(wp, velocity)
         segments = self.generate_segments(nodes, segments_time)
@@ -334,8 +334,12 @@ class Generate_Trajectory(object):
             segment_time.append(t)
         return segment_time
 
-    def get_yaw(self, wp):
+    def get_yaw(self, wp, force_zero_yaw):
         yaws = []
+        if force_zero_yaw:
+            for i in range(len(wp)-1):
+                yaws.append(0)
+            return yaws 
         for i in range(len(wp)-1):
             dx = wp[i+1][0] - wp[i][0]
             dy = wp[i+1][1]- wp[i][1]
@@ -475,24 +479,19 @@ def upload_trajectory(cf,trajectory_id ,trajectory):
     cf.high_level_commander.define_trajectory(trajectory_id, 0, len(trajectory_mem.trajectory))
     return total_duration
 
-def execute_trajectory(commander, wp):
-    try:
-        trajectory_id = 1
-        traj = Generate_Trajectory(wp, velocity=1, plotting=0)
-        traj_coef = traj.poly_coef
-        duration = upload_trajectory(cf, trajectory_id ,traj_coef)
-        commander.start_trajectory(trajectory_id, 1.0, False)
-        time.sleep(duration)
-    except:
-        pass
+
 
 
 # ---------------------------------------------- examples
 
-def get_original_wp_line(is_reversed=False):
+def get_wp_circle(is_reversed=False):
     wp_orig = []
-    for x in range(10):
-        wp_orig.append([0.1*x, 0, 1]) 
+    radius = 1
+    angles = np.linspace(0,np.pi, 20)
+    z=1
+    for i in angles:
+        z += 0.05
+        wp_orig.append([-0.5+radius*np.sin(i),radius*np.cos(i), z]) 
     wp_orig = np.array(wp_orig)
     if is_reversed:
         return wp_orig[::-1]
@@ -501,9 +500,9 @@ def get_original_wp_line(is_reversed=False):
 
 
 if __name__ == '__main__':
-    wp_orig = get_original_wp_line(is_reversed=False)
+    wp_orig = get_wp_circle(is_reversed=False)
     print(wp_orig)
-    trajectory = Generate_Trajectory(wp_orig, velocity=1, plotting=0)
+    trajectory = Generate_Trajectory(wp_orig, velocity=1, plotting=1, force_zero_yaw = True)
     print(len(trajectory.poly_coef))
     
 
