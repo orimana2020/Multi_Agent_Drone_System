@@ -482,15 +482,15 @@ def upload_trajectory(cf,trajectory_id ,trajectory):
 
 
 
-# ---------------------------------------------- examples
+# ---------------------------------------------- Examples -------------------------------------------------
 
 def get_wp_circle(is_reversed=False):
     wp_orig = []
     radius = 1
-    angles = np.linspace(0,np.pi, 20)
+    angles = np.linspace(0,1.5*np.pi, 20)
     z=1
     for i in angles:
-        z += 0.05
+        # z += 0.05
         wp_orig.append([-0.5+radius*np.sin(i),radius*np.cos(i), z]) 
     wp_orig = np.array(wp_orig)
     if is_reversed:
