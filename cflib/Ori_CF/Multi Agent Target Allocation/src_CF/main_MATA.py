@@ -7,8 +7,6 @@ from CF_Flight_Manager import CF_flight_manager
 plt.ion()
 
 
-
-
 def main(uri_list):
     targets = Targets(targets_num=15)   # !!! need update - this data should come from camera
     z_span, y_span, x_span = targets.span 
@@ -22,16 +20,15 @@ def main(uri_list):
 
     # take off
     fc.swarm.parallel_safe(fc.take_off)
-
     start = []
     goal = []
 
     for _ in range(ta.drone.drone_num):
         start.append([])
         goal.append([])
+        
     current_pos = ta.drone.base[:]
     current_pos_title = ta.drone.start_title[:]
-
     is_reached_goal = np.zeros(ta.drone.drone_num, dtype=int)
     path_found = np.zeros(ta.drone.drone_num, dtype=int)
     allocation = None
