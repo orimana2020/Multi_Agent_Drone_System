@@ -31,7 +31,7 @@ class Drone(object):
         self.safety_distance = safety_distance
         self.drone_num_changed = 0
         self.colors = ['r', 'g', 'b', 'peru', 'yellow', 'lime', 'navy', 'purple', 'pink','grey']
-        self.base = [(0,-0.6,0),(0,0,0),(0,0.6,0)] # (x,y,z)
+        self.base = [(0,-0.6,1),(0,0,1),(0,0.6,1)] # (x,y,z)
         self.full_magazine = magazine[:]
         self.current_magazine = magazine[:]
         self.start_title = []

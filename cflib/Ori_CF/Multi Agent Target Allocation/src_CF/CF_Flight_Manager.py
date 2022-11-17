@@ -16,8 +16,10 @@ class CF_flight_manager(object):
         self.swarm.parallel_safe(self.activate_high_level_commander)
         self.swarm.reset_estimators()
         open_threads = []
+        self.goal = []
         for _ in range(len(uri_list)):
             open_threads.append([])
+            self.goal.append([])
 
        
     def activate_high_level_commander(scf):
@@ -30,7 +32,7 @@ class CF_flight_manager(object):
         commander.takeoff(1.0, 2.0)
         time.sleep(3.0) 
 
-    def execute_trajectory(scf, waypoints): 
+    def _execute_trajectory(scf, waypoints): 
         cf = scf.cf
         commander = cf.high_level_commander 
         x, y, z = waypoints[0]
@@ -47,6 +49,23 @@ class CF_flight_manager(object):
         except:
             print('failed to execute trajectory')
     
+    def execute_trajectory_mt(self, uri, waypoints):
+        self.swarm.trajectory_to_drone(self._execute_trajectory, uri, waypoints)
+    
+    def get_position(self):
+        self.swarm.get_estimated_positions()
+        
+    def reached_goal(self, drone_idx):
+        try:
+            self.get_position(drone_idx)
+            dist2goal = ((self.pos.x - self.goal[drone_idx][0])**2 + (self.pos.y - self.goal[drone_idx][1])**2 +(self.pos.z - self.goal[drone_idx][2])**2 )**0.5
+            if dist2goal < 0.2:
+                return 1
+            else:
+                return 0
+        except:
+            return 0
+
     def land(scf):
         cf = scf.cf
         commander = cf.high_level_commander
