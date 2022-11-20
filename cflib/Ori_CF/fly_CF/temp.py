@@ -1,2 +1,3 @@
 import os
-print(str(os.getcwd()))
+a = [[]]
+print(a[0] == [])

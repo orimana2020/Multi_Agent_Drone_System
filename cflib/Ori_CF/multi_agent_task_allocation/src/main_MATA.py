@@ -6,7 +6,7 @@ import numpy as np
 from CF_Flight_Manager import CF_flight_manager
 import time
 plt.ion()
-
+sleep_time = 1
 
 def main(uri_list,drone_num):
     targets = Targets(targets_num=15, data_source='circle')  
@@ -19,7 +19,9 @@ def main(uri_list,drone_num):
     fc = CF_flight_manager(uri_list)
 
     # take off
-    fc.swarm.parallel_safe(fc.take_off)
+    threads = fc.swarm.parallel_safe(fc.take_off)
+    for i in range(len(threads)):
+        fc.open_threads[i] = threads[i]
     # go to base position
     # ?
     start = []
@@ -38,6 +40,7 @@ def main(uri_list,drone_num):
     at_base = np.zeros(ta.drone.drone_num, dtype=int)
 
     while ta.optim.unvisited_num > 0:
+        print((fc.open_threads[0].is_alive()))
         print('unvisited = %d' %ta.optim.unvisited_num)
         # ------------------------     update magazine state & allocate new targets -------- #    
         for j in range(ta.drone.drone_num):
@@ -123,7 +126,7 @@ def main(uri_list,drone_num):
                     allocation_availability[j] = 0
                 ta.update_kmeans()
                 allocation = None  
-            time.sleep(0.1)
+            time.sleep(sleep_time)
 
         #  --------------------------------    path planning ----------------------------- #
         fig.ax.axes.clear()
@@ -142,6 +145,7 @@ def main(uri_list,drone_num):
                 if path_found[j] == 1:
                     at_base[j] = 0
                     current_pos_title[j] = None
+                    print('i am here 1')
                     fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
 
                 if path_found[j] == 0:
@@ -149,7 +153,6 @@ def main(uri_list,drone_num):
                     
             is_reached_goal[j] = fc.reached_goal(drone_idx=j) 
             fig.plot_trajectory(path_planner,path_found, ta.drone.drone_num,goal_title=ta.drone.goal_title, path_scatter=0, smooth_path_cont=1, smooth_path_scatter=0, block_volume=1)
-
 
             if (is_reached_goal[j] == 1) and (path_found[j] == 1):
                 path_found[j] = 0
@@ -183,7 +186,7 @@ def main(uri_list,drone_num):
         fig.plot_all_targets()
         fig.plot_history(ta.optim.history, drone_num, ta.drone.colors)
         fig.show(sleep_time=0)
-        time.sleep(0.1)
+        time.sleep(sleep_time)
 
 
     # -------------------------------- Return all drones to base
@@ -228,7 +231,7 @@ if __name__ == '__main__':
     uri2 = 'radio://0/80/2M/E7E7E7E7E2'
     uri3 = 'radio://0/80/2M/E7E7E7E7E3'
     uri4 = 'radio://0/80/2M/E7E7E7E7E4'
-    uri_list = [uri4] # arrange drones according to uri index, right to left as defined in allocation_algorithm_init.py  
+    uri_list = [uri1] # arrange drones according to uri index, right to left as defined in allocation_algorithm_init.py  
     main(uri_list, drone_num=len(uri_list))
     
  

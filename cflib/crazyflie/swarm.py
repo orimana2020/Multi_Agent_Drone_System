@@ -247,17 +247,16 @@ class Swarm:
             thread.start()
             threads.append(thread)
             
-            
-            
         for thread in threads:
             thread.join()
     
-
         if reporter.is_error_reported():
             first_error = reporter.errors[0]
             raise Exception('One or more threads raised an exception when '
                             'executing parallel task') from first_error
 
+        return threads
+        
     def _thread_function_wrapper(self, *args):
         reporter = None
         try:
