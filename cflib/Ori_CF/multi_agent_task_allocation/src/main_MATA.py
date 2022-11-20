@@ -8,10 +8,9 @@ import time
 plt.ion()
 
 
-def main(uri_list):
-    targets = Targets(targets_num=15)   # !!! need update - this data should come from camera
+def main(uri_list,drone_num):
+    targets = Targets(targets_num=15, data_source='circle')  
     z_span, y_span, x_span = targets.span 
-    drone_num = 3
     safety_distance_trajectory = 0.5 
     safety_distance_allocation = safety_distance_trajectory * 2
     ta = Allocation(drone_num, targets, safety_distance_allocation , k_init=5, magazine=[10,10,10]) 
@@ -127,7 +126,7 @@ def main(uri_list):
         #  --------------------------------    path planning ----------------------------- #
         fig.ax.axes.clear()
         for j in range(ta.drone.drone_num):
-            if (path_found[j] == 0) and (ta.optim.unvisited_num > 0): #force trying plan to base until is found
+            if (path_found[j] == 0) and (ta.optim.unvisited_num > 0) and (not (fc.open_threads[j].is_alive())): #force trying plan to base until is found
                 ta.drone.start_title[j] = current_pos_title[j]
                 start[j] = current_pos[j]
                 if ta.drone.current_magazine[j] > 0:
@@ -141,7 +140,7 @@ def main(uri_list):
                 if path_found[j] == 1:
                     at_base[j] = 0
                     current_pos_title[j] = None
-                    fc.publish_traj_command(path_planner.smooth_path_m[j], drone_idx=j)
+                    fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
 
                 if path_found[j] == 0:
                     fig.plot_no_path_found(start[j], goal[j])  
@@ -193,14 +192,14 @@ def main(uri_list):
             is_reached_goal[j] = fc.reached_goal(drone_idx=j) 
 
             if not (at_base[j] == 1):
-                if (current_pos_title[j] == 'target') and (path_found[j] == 0):
+                if (current_pos_title[j] == 'target') and (path_found[j] == 0) and (not (fc.open_threads[j].is_alive())):
                     ta.drone.start_title[j] = current_pos_title[j]
                     start[j] = current_pos[j]
                     ta.drone.goal_title[j] = 'base'
                     goal[j] = ta.drone.base[j]
                     path_found[j] = path_planner.plan(start[j], goal[j] ,ta.drone.start_title[j], ta.drone.goal_title[j] ,drone_idx=j, drone_num=ta.drone.drone_num, at_base=at_base)
                     if path_found[j] == 1:
-                        fc.publish_traj_command(path_planner.smooth_path_m[j], drone_idx=j)
+                        fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
 
 
                 if (is_reached_goal[j] == 1) and (path_found[j] == 1):
@@ -226,7 +225,8 @@ if __name__ == '__main__':
     uri3 = 'radio://0/80/2M/E7E7E7E7E3'
     uri4 = 'radio://0/80/2M/E7E7E7E7E4'
     uri_list = [uri1,uri2,uri3,uri4]
-    main(uri_list)
+    drone_num = len(uri_list)
+    main(uri_list, drone_num)
     
 
 

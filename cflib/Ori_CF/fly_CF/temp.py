@@ -1,1 +1,2 @@
-print(True and (not (False)))
+import os
+print(str(os.getcwd()))

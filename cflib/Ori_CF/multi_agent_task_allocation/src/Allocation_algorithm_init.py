@@ -31,7 +31,7 @@ class Drone(object):
         self.safety_distance = safety_distance
         self.drone_num_changed = 0
         self.colors = ['r', 'g', 'b', 'peru', 'yellow', 'lime', 'navy', 'purple', 'pink','grey']
-        self.base = [(0,-0.6,1),(0,0,1),(0,0.6,1)] # (x,y,z)
+        self.base = [(0,-0.6,1), (0,0,1), (0,0.6,1)] # (x,y,z)
         self.full_magazine = magazine[:]
         self.current_magazine = magazine[:]
         self.start_title = []
@@ -44,7 +44,7 @@ class Drone(object):
 
 class Targets(object):
 
-    def __init__(self, targets_num,data_source):
+    def __init__(self, targets_num, data_source):
         self.targets_num = targets_num
         t = np.linspace(0, 2*np.pi-2*np.pi/targets_num, targets_num)
         radius = 1
@@ -68,10 +68,7 @@ class Targets(object):
         self.x_min, self.x_max = 0, max(self.targetpos[:,0])
         self.x_span = (self.x_max - self.x_min) * 1.1        
             
-
-
-
-        
+  
 class Optim(object):
     def __init__(self, targets, drone, k):
         self.k = k
@@ -100,13 +97,13 @@ class Optim(object):
 
     def get_state_matrix(self, drone_num, init_flag=False):
         if init_flag:
-            return np.load(str(os.getcwd())+'/src/drone_pollination/src'+'/state_mat/state_mat_d'+str(drone_num)+'_k'+str(self.k)+'.npy')
+            return np.load(str(os.getcwd())+'/cflib/Ori_CF/multi_agent_task_allocation/src'+'/state_mat/state_mat_d'+str(drone_num)+'_k'+str(self.k)+'.npy')
         else:   
             if self.k > 1:
                 self.k -= 1
             print('k updated:' , self.k)
             if self.k >=2:
-                return np.load(str(os.getcwd())+'/src/drone_pollination/src'+'/state_mat/state_mat_d'+str(drone_num)+'_k'+str(self.k)+'.npy')
+                return np.load(str(os.getcwd())+'/cflib/Ori_CF/multi_agent_task_allocation/src'+'/state_mat/state_mat_d'+str(drone_num)+'_k'+str(self.k)+'.npy')
             elif self.k == 1:
                 return np.ones((1,drone_num,1), dtype=int)
     
