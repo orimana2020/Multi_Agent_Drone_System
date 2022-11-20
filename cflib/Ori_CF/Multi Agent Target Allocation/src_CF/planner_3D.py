@@ -281,7 +281,7 @@ class Trajectory(object):
                 return 0 
             try:
                 path1 = self.A_star(start, intermidiate)
-                if len(path1)< 2:
+                if len(path1) < 2:
                     print('intermidiate path not found!!!')
                 smooth_path1 = self.get_smooth_path(path1)
                 block_volume1 = self.inflate(path1) 

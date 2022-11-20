@@ -125,7 +125,8 @@ class Swarm:
                 self._positions[scf.cf.link_uri] = SwarmPosition(x, y, z)
                 break
 
-    def my_get_estimated_position(self, scf):
+
+    def get_single_cf_estimated_position(self, scf):
         if self.logger[scf] == None:
             log_config = LogConfig(name='stateEstimate', period_in_ms=10)
             log_config.add_variable('stateEstimate.x', 'float')
@@ -133,7 +134,6 @@ class Swarm:
             log_config.add_variable('stateEstimate.z', 'float')
             self.logger[scf] = SyncLogger(scf, log_config)
             self.logger[scf].connect()
-            
             
         for entry in self.logger[scf]:
             if not self.logger[scf]._queue.empty():
@@ -143,6 +143,7 @@ class Swarm:
             z = entry[1]['stateEstimate.z']
             self._positions[scf.cf.link_uri] = [x,y,z] #SwarmPosition(x, y, z)
             break
+
            
     def get_estimated_positions(self):
         """
@@ -150,8 +151,9 @@ class Swarm:
         value, with the estimated (x, y, z) of each Crazyflie in the swarm.
         """
         # self.parallel_safe(self.__get_estimated_position)
-        self.parallel_safe(self.my_get_estimated_position)
+        self.parallel_safe(self.get_single_cf_estimated_position)
         return self._positions
+    
   
 
     def __wait_for_position_estimator(self, scf):
@@ -216,7 +218,6 @@ class Swarm:
         # daemon=True allows the main thread keep running 
         thread = Thread(target=self._thread_function_wrapper, args=args, daemon=True)
         thread.start()
-        thread.is_alive
         if reporter.is_error_reported():
             first_error = reporter.errors[0]
             raise Exception('One or more threads raised an exception when '

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from Allocation_algorithm_init import  Targets ,get_figure
 import numpy as np
 from CF_Flight_Manager import CF_flight_manager
+import time
 plt.ion()
 
 
@@ -70,6 +71,7 @@ def main(uri_list):
             for j in range(ta.drone.drone_num):
                 is_reached_goal[j] = fc.reached_goal(drone_idx=j) 
                 if not (at_base[j] == 1):
+                    # drone arrived to target
                     if  (ta.drone.goal_title[j] == 'target') and (path_found[j] == 1) and (is_reached_goal[j] == 1) and (ta.optim.unvisited[ta.optim.current_targets[j]] == True):
                         path_found[j] = 0
                         ta.optim.unvisited_num -= 1
@@ -83,13 +85,14 @@ def main(uri_list):
                         goal[j] = ta.drone.base[j]
                         is_reached_goal[j] = 0 # just to reset 
 
-                    # find path to target
-                    if (path_found[j] == 0) and (ta.drone.goal_title[j] == 'target') and (ta.optim.unvisited[ta.optim.current_targets[j]] == True) :
+                    # find path to target # add condition to make sure thread is dead
+                    if (path_found[j] == 0) and (ta.drone.goal_title[j] == 'target') and (ta.optim.unvisited[ta.optim.current_targets[j]] == True) and (not (fc.open_threads[j].is_alive())):
                         path_found[j] = path_planner.plan(start[j], goal[j] ,ta.drone.start_title[j], ta.drone.goal_title[j] ,drone_idx=j, drone_num=ta.drone.drone_num, at_base=at_base)
                         if path_found[j] == 1:
                             fc.publish_traj_command(path_planner.smooth_path_m[j], drone_idx=j)
-                    # find path to base
-                    if (path_found[j] == 0) and  (ta.optim.unvisited[ta.optim.current_targets[j]] == False) :
+
+                    # find path to base # add condition to make sure thread is dead
+                    if (path_found[j] == 0) and  (ta.optim.unvisited[ta.optim.current_targets[j]] == False) and (not (fc.open_threads[j].is_alive())):
                         path_found[j] = path_planner.plan(start[j], goal[j] ,ta.drone.start_title[j], ta.drone.goal_title[j] ,drone_idx=j, drone_num=ta.drone.drone_num, at_base=at_base)
                         if path_found[j] == 1:
                             fc.publish_traj_command(path_planner.smooth_path_m[j], drone_idx=j)
@@ -98,12 +101,14 @@ def main(uri_list):
 
                     if ((path_found[j] == 1) and (ta.drone.goal_title[j] == 'base') and (is_reached_goal[j] == 1)):
                         at_base[j] = 1
+
             fig.ax.axes.clear()
             fig.plot_at_base(drone_num, at_base)
             fig.plot_all_targets()
             fig.plot_trajectory(path_planner,path_found, ta.drone.drone_num,goal_title=ta.drone.goal_title, path_scatter=0, smooth_path_cont=1, smooth_path_scatter=0, block_volume=1)
             fig.plot_history(ta.optim.history, drone_num, ta.drone.colors)
             fig.show(sleep_time=0.7)
+
             if np.sum(at_base[:ta.drone.drone_num]) == ta.drone.drone_num :
                 for j in range(ta.drone.drone_num):
                     ta.drone.current_magazine[j] = ta.drone.full_magazine[j]
@@ -116,7 +121,7 @@ def main(uri_list):
                     allocation_availability[j] = 0
                 ta.update_kmeans()
                 allocation = None  
-            rate.sleep()
+            time.sleep(0.1)
 
         #  --------------------------------    path planning ----------------------------- #
         fig.ax.axes.clear()
@@ -176,7 +181,7 @@ def main(uri_list):
         fig.plot_all_targets()
         fig.plot_history(ta.optim.history, drone_num, ta.drone.colors)
         fig.show(sleep_time=0)
-        rate.sleep()
+        time.sleep(0.1)
 
 
     # -------------------------------- Return all drones to base

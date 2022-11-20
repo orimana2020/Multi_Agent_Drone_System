@@ -9,16 +9,19 @@ class CF_flight_manager(object):
     def __init__(self, uri_list):
         self.drone_num = len(uri_list)
         uris = set(uri_list)
+        self.uri_dict = dict()
+        for i  in range(len(uri_list)):
+            self.uri_dict[i] = uri_list[i]
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
         self.swarm = Swarm(uris, factory=factory)
         self.swarm.open_links()
         self.swarm.parallel_safe(self.activate_high_level_commander)
         self.swarm.reset_estimators()
-        open_threads = []
+        self.open_threads = []
         self.goal = []
         for _ in range(len(uri_list)):
-            open_threads.append([])
+            self.open_threads.append([])
             self.goal.append([])
 
        
@@ -49,16 +52,20 @@ class CF_flight_manager(object):
         except:
             print('failed to execute trajectory')
     
-    def execute_trajectory_mt(self, uri, waypoints):
-        self.swarm.trajectory_to_drone(self._execute_trajectory, uri, waypoints)
+    def execute_trajectory_mt(self, drone_idx, waypoints):# send trajectory with multi thread mode
+        thread = self.swarm.trajectory_to_drone(self._execute_trajectory, self.uri_dict[drone_idx], waypoints)
+        self.open_threads[drone_idx] = thread
     
-    def get_position(self):
-        self.swarm.get_estimated_positions()
+    def get_position(self, drone_idx):
+        scf = self.swarm._cfs[self.uri_dict[drone_idx]]
+        self.swarm.get_single_cf_estimated_position(self, scf)
+
         
     def reached_goal(self, drone_idx):
         try:
             self.get_position(drone_idx)
-            dist2goal = ((self.pos.x - self.goal[drone_idx][0])**2 + (self.pos.y - self.goal[drone_idx][1])**2 +(self.pos.z - self.goal[drone_idx][2])**2 )**0.5
+            current_x, current_y, current_z = self.swarm._positions[self.uri_dict[drone_idx]]
+            dist2goal = ((current_x - self.goal[drone_idx][0])**2 + (current_y - self.goal[drone_idx][1])**2 +(current_z - self.goal[drone_idx][2])**2 )**0.5
             if dist2goal < 0.2:
                 return 1
             else:
