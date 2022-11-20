@@ -44,7 +44,7 @@ class CF_flight_manager(object):
         time.sleep(3)
         try:
             trajectory_id = 1
-            traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False)
+            traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False, is_smoothen=True)
             traj_coef = traj.poly_coef
             duration = upload_trajectory(cf, trajectory_id ,traj_coef)
             commander.start_trajectory(trajectory_id, 1.0, False)

@@ -300,8 +300,11 @@ class Segment:
 
 
 class Generate_Trajectory(object):
-    def __init__(self, waypoints, velocity=1,plotting=0, force_zero_yaw = False):
-        wp = self.get_smooth_path(waypoints)
+    def __init__(self, waypoints, velocity=1,plotting=0, force_zero_yaw = False, is_smoothen=True):
+        if not (is_smoothen):
+            wp = self.get_smooth_path(waypoints)
+        else:
+            wp = waypoints
         yaw = self.get_yaw(wp,force_zero_yaw)
         nodes = self.generate_nodes(wp, yaw)
         segments_time = self.get_segments_time(wp, velocity)
@@ -318,9 +321,8 @@ class Generate_Trajectory(object):
         size_cp = size / 8
         return current + normilized_dir_vec * size_cp
 
-
-
     def get_smooth_path(self, path):
+        # s = smoothness, m > k must hold, default k degree is  k=3, m is number of points
         tck, _ = interpolate.splprep([path[:,0], path[:,1], path[:,2]], s=10)  
         u_fine = np.linspace(0,1,int(min(len(path), 30))) # determine number of points in smooth path 
         smooth_path = interpolate.splev(u_fine, tck)

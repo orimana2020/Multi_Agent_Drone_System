@@ -89,13 +89,14 @@ def main(uri_list):
                     if (path_found[j] == 0) and (ta.drone.goal_title[j] == 'target') and (ta.optim.unvisited[ta.optim.current_targets[j]] == True) and (not (fc.open_threads[j].is_alive())):
                         path_found[j] = path_planner.plan(start[j], goal[j] ,ta.drone.start_title[j], ta.drone.goal_title[j] ,drone_idx=j, drone_num=ta.drone.drone_num, at_base=at_base)
                         if path_found[j] == 1:
-                            fc.publish_traj_command(path_planner.smooth_path_m[j], drone_idx=j)
+                            fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
 
                     # find path to base # add condition to make sure thread is dead
                     if (path_found[j] == 0) and  (ta.optim.unvisited[ta.optim.current_targets[j]] == False) and (not (fc.open_threads[j].is_alive())):
                         path_found[j] = path_planner.plan(start[j], goal[j] ,ta.drone.start_title[j], ta.drone.goal_title[j] ,drone_idx=j, drone_num=ta.drone.drone_num, at_base=at_base)
                         if path_found[j] == 1:
-                            fc.publish_traj_command(path_planner.smooth_path_m[j], drone_idx=j)
+                            fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
+                            
                         if path_found[j] == 0:
                             fig.plot_no_path_found(start[j], goal[j])  
 

@@ -199,7 +199,8 @@ class Trajectory(object):
         # s = smoothness, m > k must hold, default k degree is  k=3, m is number of points
         tck, _ = interpolate.splprep([path[:,0], path[:,1], path[:,2]], s=10)  
         # x_knots, y_knots, z_knots = interpolate.splev(tck[0], tck)
-        u_fine = np.linspace(0,1,int(len(path))) # determine number of points in smooth path 
+        u_fine = np.linspace(0, 1, 30) # determine number of points in smooth path 
+        # 31 is the maximum sigments CF memory can contain 
         smooth_path = interpolate.splev(u_fine, tck)
         return np.transpose(np.array(smooth_path))
 
