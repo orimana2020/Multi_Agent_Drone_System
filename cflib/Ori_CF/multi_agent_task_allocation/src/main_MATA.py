@@ -6,15 +6,16 @@ import numpy as np
 from CF_Flight_Manager import CF_flight_manager
 import time
 plt.ion()
-sleep_time = 1
+sleep_time = 0.2
 
 def main(uri_list,drone_num):
-    targets = Targets(targets_num=15, data_source='circle')  
+    targets = Targets(targets_num=6, data_source='circle')  
     z_span, y_span, x_span = targets.span 
     safety_distance_trajectory = 0.5 
     safety_distance_allocation = safety_distance_trajectory * 2
     ta = Allocation(drone_num, targets, safety_distance_allocation , k_init=5, magazine=[5,5,5]) 
-    path_planner = Trajectory(x_span, y_span ,z_span ,drone_num=ta.drone.drone_num, res=0.1, safety_distance=safety_distance_trajectory)
+    retreat_range = 0.7
+    path_planner = Trajectory(x_span, y_span ,z_span ,drone_num=ta.drone.drone_num, res=0.1, safety_distance=safety_distance_trajectory, retreat_range=retreat_range)
     fig = get_figure(targets, ta.drone)
     fc = CF_flight_manager(uri_list)
 
@@ -40,9 +41,8 @@ def main(uri_list,drone_num):
     at_base = np.zeros(ta.drone.drone_num, dtype=int)
 
     while ta.optim.unvisited_num > 0:
-        print((fc.open_threads[0].is_alive()))
         print('unvisited = %d' %ta.optim.unvisited_num)
-        # ------------------------     update magazine state & allocate new targets -------- #    
+        # ------------------------ update magazine state & allocate new targets -------- #    
         for j in range(ta.drone.drone_num):
             # not valid at first itr
             if allocation_availability[j] == 1:
@@ -145,7 +145,6 @@ def main(uri_list,drone_num):
                 if path_found[j] == 1:
                     at_base[j] = 0
                     current_pos_title[j] = None
-                    print('i am here 1')
                     fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
 
                 if path_found[j] == 0:
@@ -195,7 +194,6 @@ def main(uri_list,drone_num):
         print('return all drones to base')
         for j in range(ta.drone.drone_num):
             is_reached_goal[j] = fc.reached_goal(drone_idx=j) 
-
             if not (at_base[j] == 1):
                 if (current_pos_title[j] == 'target') and (path_found[j] == 0) and (not (fc.open_threads[j].is_alive())):
                     ta.drone.start_title[j] = current_pos_title[j]
@@ -205,7 +203,6 @@ def main(uri_list,drone_num):
                     path_found[j] = path_planner.plan(start[j], goal[j] ,ta.drone.start_title[j], ta.drone.goal_title[j] ,drone_idx=j, drone_num=ta.drone.drone_num, at_base=at_base)
                     if path_found[j] == 1:
                         fc.execute_trajectory_mt(drone_idx=j, waypoints=path_planner.smooth_path_m[j])
-
 
                 if (is_reached_goal[j] == 1) and (path_found[j] == 1):
                     at_base[j] = 1

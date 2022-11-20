@@ -5,7 +5,7 @@ from scipy import interpolate
 
 
 class Trajectory(object):
-    def __init__(self, x_span ,y_span ,z_span ,drone_num ,res , safety_distance):
+    def __init__(self, x_span ,y_span ,z_span ,drone_num ,res , safety_distance, retreat_range):
         self.res = res
         self.minimum_floor_distance = 0.3 # meter
         z_span = z_span - self.minimum_floor_distance
@@ -21,6 +21,7 @@ class Trajectory(object):
         self.block_volumes_m = []
         self.paths_m = []
         self.smooth_path_m =[]
+        self.retreat_range = retreat_range
         
         for _ in range(drone_num):
             self.block_volume.append([])
@@ -272,27 +273,19 @@ class Trajectory(object):
                 return 0
 
         elif (start_title == 'target' and goal_title == 'target'):
-            retreat_dist = 0.5
+            print('original start', start_m)
+            start_m = tuple([start_m[0]-self.retreat_range, start_m[1], start_m[2]]) # add retreat range 
+            print('start after retreat', start_m)
             start = self.covert_meter2idx(start_m)
-            # intermidiate = self.covert_meter2idx((start_m[0]-retreat_dist, start_m[1], start_m[2])) 
-            intermidiate = self.covert_meter2idx((min([start_m[0],goal_m[0]])-retreat_dist, start_m[1], start_m[2])) 
+            print('start idx', start)
             goal = self.covert_meter2idx(goal_m)
-            if self.grid_3d[goal] == 1 or self.grid_3d[intermidiate] == 1: # fast sanity check of goal occupancy status
-                print('sanity check failed')
-                return 0 
+            print('goal idx', goal)
             try:
-                path1 = self.A_star(start, intermidiate)
-                if len(path1) < 2:
-                    print('intermidiate path not found!!!')
-                smooth_path1 = self.get_smooth_path(path1)
-                block_volume1 = self.inflate(path1) 
-                self.visited_3d = self.grid_3d.copy()
-                path2 = self.A_star(intermidiate, goal)
-                smooth_path2 = self.get_smooth_path(path2)
-                block_volume2 = self.inflate(path2) 
-                path = np.vstack((path1, path2))
-                smooth_path = np.vstack((smooth_path1, smooth_path2))
-                self.block_volume[drone_idx] = np.vstack((block_volume1, block_volume2))  
+                path = self.A_star(start, goal)
+                if len(path) < 2:
+                    print('target to target path not found!!!')
+                smooth_path = self.get_smooth_path(path)
+                self.block_volume[drone_idx] = self.inflate(path) 
                 self.paths_m[drone_idx] = self.convert_idx2meter(path)      
                 self.smooth_path_m[drone_idx] = self.convert_idx2meter(smooth_path,goal=goal_m,add_end_point=1)
                 self.block_volumes_m[drone_idx] = self.convert_idx2meter(self.block_volume[drone_idx])

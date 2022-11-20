@@ -40,8 +40,8 @@ class CF_flight_manager(object):
         commander = cf.high_level_commander 
         x, y, z = waypoints[0]
         print('start wp = ', waypoints[0])
-        commander.go_to(x, y, z, yaw=0, duration_s=3)
-        time.sleep(3)
+        commander.go_to(x, y, z, yaw=0, duration_s=2)
+        time.sleep(2)
         try:
             trajectory_id = 1
             traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False, is_smoothen=True)
@@ -64,13 +64,10 @@ class CF_flight_manager(object):
         
     def reached_goal(self, drone_idx):
         try:
-            print('i am here 2')
             self.get_position(drone_idx)
             current_x, current_y, current_z = self.swarm._positions[self.uri_dict[drone_idx]]
-            print(f'{current_x}, {current_y}, {current_z}')
             dist2goal = ((current_x - self.goal[drone_idx][0])**2 + (current_y - self.goal[drone_idx][1])**2 +(current_z - self.goal[drone_idx][2])**2 )**0.5
             print(f'distance to goal of drone {drone_idx} is : {dist2goal}')
-            print('i am here 3')
             if dist2goal < 0.3:
                 return 1
             else:
