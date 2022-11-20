@@ -13,13 +13,15 @@ def main(uri_list,drone_num):
     z_span, y_span, x_span = targets.span 
     safety_distance_trajectory = 0.5 
     safety_distance_allocation = safety_distance_trajectory * 2
-    ta = Allocation(drone_num, targets, safety_distance_allocation , k_init=5, magazine=[10,10,10]) 
+    ta = Allocation(drone_num, targets, safety_distance_allocation , k_init=5, magazine=[5,5,5]) 
     path_planner = Trajectory(x_span, y_span ,z_span ,drone_num=ta.drone.drone_num, res=0.1, safety_distance=safety_distance_trajectory)
     fig = get_figure(targets, ta.drone)
     fc = CF_flight_manager(uri_list)
 
     # take off
     fc.swarm.parallel_safe(fc.take_off)
+    # go to base position
+    # ?
     start = []
     goal = []
 
@@ -212,6 +214,8 @@ def main(uri_list,drone_num):
         fig.plot_all_targets()    
         fig.plot_trajectory(path_planner,path_found, ta.drone.drone_num,goal_title=ta.drone.goal_title, path_scatter=0, smooth_path_cont=1, smooth_path_scatter=0, block_volume=0)
         fig.show(sleep_time=1)
+    # land
+    fc.swarm.parallel_safe(fc.land)
     fig.plot_at_base(drone_num, at_base)
     fig.plot_all_targets()
     print('!! finnitto !!!')
@@ -224,9 +228,8 @@ if __name__ == '__main__':
     uri2 = 'radio://0/80/2M/E7E7E7E7E2'
     uri3 = 'radio://0/80/2M/E7E7E7E7E3'
     uri4 = 'radio://0/80/2M/E7E7E7E7E4'
-    uri_list = [uri1,uri2,uri3,uri4]
-    drone_num = len(uri_list)
-    main(uri_list, drone_num)
+    uri_list = [uri4] # arrange drones according to uri index, right to left as defined in allocation_algorithm_init.py  
+    main(uri_list, drone_num=len(uri_list))
     
-
+ 
 

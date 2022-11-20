@@ -16,7 +16,6 @@ class Env(object):
         self.drone_peformace = np.zeros([self.drone_num, 100])
         for i in range(self.drone_num):
             self.drone_peformace[i,0:drone_performace[i]] = 1
-    
     def reached_goal(self, drone_idx, goal=None): #in real simulation reached_goal is given if distance between drone and goal below some value
         if self.drone_peformace[drone_idx, random.randint(0,99)] == 1:
             return 1
@@ -47,15 +46,14 @@ class Targets(object):
     def __init__(self, targets_num, data_source):
         self.targets_num = targets_num
         t = np.linspace(0, 2*np.pi-2*np.pi/targets_num, targets_num)
-        radius = 1
-        depth = 3-0.3 
-        z_offset = radius + 0.5
+        radius = 0.7
+        depth = 2 
+        z_offset = radius + 1
         if data_source == 'circle':
             self.targetpos = np.stack([depth*np.ones([targets_num]) , radius * np.cos(t), radius * np.sin(t) + z_offset] , axis=-1)
         elif data_source == 'dataset':
             self.targetpos = np.load(str(os.getcwd())+'/src/drone_pollination/src/targets_arr.npy')
         self.targets_num,_ = self.targetpos.shape
-
         self.targetpos_reallocate = self.targetpos.copy()
         self.limits = self.set_limits()
         self.span = [self.z_span, self.y_span, self.x_span]
