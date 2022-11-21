@@ -9,7 +9,7 @@ plt.ion()
 sleep_time = 0.2
 
 def main(uri_list,drone_num):
-    targets = Targets(targets_num=6, data_source='circle')  
+    targets = Targets(targets_num=12, data_source='circle')  
     z_span, y_span, x_span = targets.span 
     safety_distance_trajectory = 0.5 
     safety_distance_allocation = safety_distance_trajectory * 2
@@ -214,6 +214,14 @@ def main(uri_list,drone_num):
         fig.plot_all_targets()    
         fig.plot_trajectory(path_planner,path_found, ta.drone.drone_num,goal_title=ta.drone.goal_title, path_scatter=0, smooth_path_cont=1, smooth_path_scatter=0, block_volume=0)
         fig.show(sleep_time=1)
+    thread_alive = True
+    while thread_alive:
+        thread_alive = False
+        for i in range(len(threads)):
+            if fc.open_threads[i].is_alive():
+                thread_alive = True
+        time.sleep(sleep_time)
+    print('all threads dead')
     # land
     fc.swarm.parallel_safe(fc.land)
     fig.plot_at_base(drone_num, at_base)
@@ -228,7 +236,7 @@ if __name__ == '__main__':
     uri2 = 'radio://0/80/2M/E7E7E7E7E2'
     uri3 = 'radio://0/80/2M/E7E7E7E7E3'
     uri4 = 'radio://0/80/2M/E7E7E7E7E4'
-    uri_list = [uri1] # arrange drones according to uri index, right to left as defined in allocation_algorithm_init.py  
+    uri_list = [uri1, uri3] # arrange drones according to uri index, right to left as defined in allocation_algorithm_init.py  
     main(uri_list, drone_num=len(uri_list))
     
  

@@ -35,13 +35,14 @@ class CF_flight_manager(object):
         commander.takeoff(1.0, 2.0)
         time.sleep(3.0) 
 
+
     def _execute_trajectory(self, scf, waypoints): 
         cf = scf.cf
         commander = cf.high_level_commander 
         x, y, z = waypoints[0]
         print('start wp = ', waypoints[0])
-        commander.go_to(x, y, z, yaw=0, duration_s=2)
-        time.sleep(2)
+        commander.go_to(x, y, z, yaw=0, duration_s=1)
+        time.sleep(1)
         try:
             trajectory_id = 1
             traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False, is_smoothen=True)
