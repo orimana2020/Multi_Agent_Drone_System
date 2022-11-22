@@ -5,9 +5,10 @@ from scipy import interpolate
 
 
 class Trajectory(object):
-    def __init__(self, x_span ,y_span ,z_span ,drone_num ,res , safety_distance, retreat_range):
+    def __init__(self, x_span ,y_span ,z_span ,drone_num ,res , safety_distance):
         self.res = res
-        self.minimum_floor_distance = 0.3 # meter
+        self.break_trajecoty_len = 0.4
+        self.minimum_floor_distance = 0.4 # meter
         z_span = z_span - self.minimum_floor_distance
         self.grid_3d = np.zeros([int(z_span/res), int(y_span/res), int(x_span/res)], dtype=int) #z y x
         self.grid_3d_shape = self.grid_3d.shape
@@ -18,10 +19,9 @@ class Trajectory(object):
         self.z_lim = z_lim -1 
         self.safety_distance = safety_distance
         self.block_volume = []
-        self.block_volumes_m = []
-        self.paths_m = []
+        self.block_volumes_m = [] # used for visualization only
+        self.paths_m = [] # used for visualization only
         self.smooth_path_m =[]
-        self.retreat_range = retreat_range
         
         for _ in range(drone_num):
             self.block_volume.append([])
@@ -157,7 +157,6 @@ class Trajectory(object):
 
 
     def reconstruct_path(self, came_from, current, start):
-        # reconstruct_path(self, came_from:dict, current, start): for python 3
         path = []
         while current in came_from.keys():
             path.append(current)
@@ -166,8 +165,7 @@ class Trajectory(object):
         return np.array(path[::-1])
 
 
-
-    def A_star(self,start,goal):
+    def A_star(self, start, goal):
         came_from = {}
         open_set = {}
         g_score = np.ones(self.grid_3d.shape) * np.inf
@@ -196,14 +194,32 @@ class Trajectory(object):
         return False #could not find path
 
 
-    def get_smooth_path(self, path):
+    def get_smooth_path(self, path ,len1 ,len3):
         # s = smoothness, m > k must hold, default k degree is  k=3, m is number of points
-        tck, _ = interpolate.splprep([path[:,0], path[:,1], path[:,2]], s=10)  
-        # x_knots, y_knots, z_knots = interpolate.splev(tck[0], tck)
-        u_fine = np.linspace(0, 1, 30) # determine number of points in smooth path 
-        # 31 is the maximum sigments CF memory can contain 
-        smooth_path = interpolate.splev(u_fine, tck)
-        return np.transpose(np.array(smooth_path))
+        try:
+            weights = np.ones(len(path))*10
+            weights[0:len1] = 100
+            weights[len(path)-len3:] = 100
+            tck, _ = interpolate.splprep([path[:,0], path[:,1], path[:,2]],w=weights,s=10)  
+            u_fine = np.linspace(0,1,30) # determine number of points in smooth path 
+            smooth_path = interpolate.splev(u_fine, tck)
+            return np.transpose(np.array(smooth_path))
+        except: # remove duplicated coordes which result error in interpolation
+            new_path = [path[0]]
+            for i in range(len(path)):
+                a = np.round(np.array(path[i]) / self.res)
+                b = np.round(np.array(new_path[-1]) / self.res)
+                if not (a == b).all():
+                    new_path.append(path[i])
+            path2 = np.array(new_path)
+            weights = np.ones(len(path2))*10
+            weights[0:len1] = 100
+            weights[len(path2)-len3:] = 100
+            tck, _ = interpolate.splprep([path2[:,0], path2[:,1], path2[:,2]],w=weights,s=10)  
+            u_fine = np.linspace(0,1,30) # determine number of points in smooth path 
+            smooth_path = interpolate.splev(u_fine, tck)
+            print('duplicate coords found in path and resolved')
+            return np.transpose(np.array(smooth_path))
 
     def inflate(self, path):
         distance_idx = int(self.safety_distance/self.res)
@@ -232,17 +248,61 @@ class Trajectory(object):
     def covert_meter2idx(self, coords_meter): # (x,y,z) -> (z,y,x)
         return (int((coords_meter[2]-self.minimum_floor_distance)/self.res ), int(coords_meter[1]/self.res + self.y_lim/2)  , int(coords_meter[0]/self.res ) ) 
 
-    def convert_idx2meter(self, coords_idx, goal=None, add_end_point=0): #(z,y,x) -> (x,y,z)
+    def convert_idx2meter(self, coords_idx): #(z,y,x) -> (x,y,z)
         coord_m = np.stack(((coords_idx[:,2] ) * self.res, (coords_idx[:,1] - self.y_lim/2) * self.res, coords_idx[:,0] * self.res + self.minimum_floor_distance), axis=-1)
-        if add_end_point == 0:
-            return coord_m
-        elif add_end_point == 1:
-            # remove the last point 
-            coord_m = coord_m[:-1]
-            # add original target coords
-            # return np.stack([coord_m, np.array(goal)],axis=0)
-            return np.vstack((coord_m, np.array(goal)))
-    
+        return coord_m
+        
+
+    def get_path(self, start_m, goal_m, is_forward):
+        """
+        this function make sure good approach at zero yaw to target and also 0 yaw when return to base
+        """
+        if is_forward:
+            if start_m[0] > goal_m[0]:
+                temp = goal_m
+                goal_m = start_m
+                start_m = temp
+            start = self.covert_meter2idx(start_m)
+            goal = self.covert_meter2idx(goal_m)
+            break_trajecoty_len = abs(start_m[0] - goal_m[0]) * 0.2
+            intermidiate_1 = self.covert_meter2idx((start_m[0] + break_trajecoty_len, start_m[1], start_m[2]))
+            intermidiate_2 = self.covert_meter2idx((goal_m[0] - break_trajecoty_len, goal_m[1], goal_m[2]))
+        else: #backward
+            if start_m[0] < goal_m[0]:
+                temp = goal_m
+                goal_m = start_m
+                start_m = temp
+            start = self.covert_meter2idx(start_m)
+            goal = self.covert_meter2idx(goal_m)
+            break_trajecoty_len = abs(start_m[0] - goal_m[0]) * 0.2
+            intermidiate_1 = self.covert_meter2idx((start_m[0] - break_trajecoty_len, start_m[1], start_m[2]))
+            intermidiate_2 = self.covert_meter2idx((goal_m[0] + break_trajecoty_len, goal_m[1], goal_m[2]))
+
+        if self.grid_3d[goal] == 1: # fast sanity check of goal occupancy status
+            print('sanity check failed')
+            return 0 
+        try:
+            path1 = self.A_star(start, intermidiate_1)
+            path1 = path1[:-1]
+            self.visited_3d = self.grid_3d.copy()
+            path2 = self.A_star(intermidiate_1, intermidiate_2)
+            path2 = path2[:-1]
+            self.visited_3d = self.grid_3d.copy()
+            path3 = self.A_star(intermidiate_2, goal)
+            self.visited_3d = self.grid_3d.copy()
+            path = np.vstack((path1, path2, path3))
+            # -------- convert idx 2 meter
+            segment1_m = self.convert_idx2meter(path1)
+            segment2_m = self.convert_idx2meter(path2)
+            segment3_m = self.convert_idx2meter(path3)
+            # --------- replace to accurate location
+            segment1_m[:,1] ,segment1_m[:,2] =  start_m[1], start_m[2]
+            segment3_m[:,1], segment3_m[:,2] = goal_m[1], goal_m[2]
+            return segment1_m, segment2_m, segment3_m, path
+        except:
+            print('error in creating segments')
+            return None
+
     def plan(self, start_m, goal_m, start_title, goal_title ,drone_idx, drone_num, at_base):
         
         # update grid_3D, exclude current drone block_volume
@@ -252,48 +312,42 @@ class Trajectory(object):
                 self.grid_3d[self.block_volume[i][:,0], self.block_volume[i][:,1], self.block_volume[i][:,2]] = 1
         self.visited_3d = self.grid_3d.copy()
 
-        # (start = base and goal = target) or (start = target and goal = base)
+
         if (start_title == 'base' and goal_title == 'target') or (start_title == 'target' and goal_title == 'base'):
-            start = self.covert_meter2idx(start_m)
-            goal = self.covert_meter2idx(goal_m)
-            if self.grid_3d[goal] == 1: # fast sanity check of goal occupancy status
-                print('sanity check failed')
-                return 0 
-            try:
-                path = self.A_star(start, goal)
-                smooth_path = self.get_smooth_path(path)
-                self.block_volume[drone_idx] = self.inflate(path)      
-                self.paths_m[drone_idx] = self.convert_idx2meter(path)      
-                self.smooth_path_m[drone_idx] = self.convert_idx2meter(smooth_path,goal=goal_m,add_end_point=1)
-                self.block_volumes_m[drone_idx] = self.convert_idx2meter(self.block_volume[drone_idx])
-                print('Path Found')
-                return 1
-            except:
-                print(' No Path Found! agent = '+str( drone_idx)+' from '+str(start_title)+ ' to '+ str(goal_title)+' start:'+str(start_m)+' goal:'+str(goal_m) + '')
-                return 0
+            # try:
+            if (start_title == 'base' and goal_title == 'target'):
+                segment1_m, segment2_m, segment3_m, path = self.get_path(start_m, goal_m, is_forward=True)
+            elif (start_title == 'target' and goal_title == 'base'):
+                segment1_m, segment2_m, segment3_m, path = self.get_path(goal_m, start_m, is_forward=False)
+            self.block_volume[drone_idx] = self.inflate(path)
+            self.paths_m[drone_idx] = np.vstack((segment1_m, segment2_m, segment3_m))
+            self.smooth_path_m[drone_idx] = self.get_smooth_path(path=self.paths_m[drone_idx],len1=len(segment1_m),len3=len(segment3_m))  
+            self.block_volumes_m[drone_idx] = self.convert_idx2meter(self.block_volume[drone_idx])
+            print('Path Found')
+            return 1
+
 
         elif (start_title == 'target' and goal_title == 'target'):
-            print('original start', start_m)
-            start_m = tuple([start_m[0]-self.retreat_range, start_m[1], start_m[2]]) # add retreat range 
-            print('start after retreat', start_m)
-            start = self.covert_meter2idx(start_m)
-            print('start idx', start)
-            goal = self.covert_meter2idx(goal_m)
-            print('goal idx', goal)
+            retreat_dist = 0.7
+            intermidiate_m = (min([start_m[0],goal_m[0]]) - retreat_dist, (start_m[1]+goal_m[1])/2, (start_m[2]+goal_m[2])/2)
             try:
-                path = self.A_star(start, goal)
-                if len(path) < 2:
-                    print('target to target path not found!!!')
-                smooth_path = self.get_smooth_path(path)
-                self.block_volume[drone_idx] = self.inflate(path) 
-                self.paths_m[drone_idx] = self.convert_idx2meter(path)      
-                self.smooth_path_m[drone_idx] = self.convert_idx2meter(smooth_path,goal=goal_m,add_end_point=1)
-                self.block_volumes_m[drone_idx] = self.convert_idx2meter(self.block_volume[drone_idx])
+                segment1_m, segment2_m, segment3_m, path = self.get_path(start_m, intermidiate_m, is_forward=False)
+                block_volume1 = self.inflate(path)
+                path1_m = np.vstack((segment1_m, segment2_m, segment3_m))
+                smooth_path_m1 = self.get_smooth_path(path=path1_m, len1=len(segment1_m), len3=len(segment3_m))
+                block_volume1_m = self.convert_idx2meter(self.block_volume[drone_idx])
+
+                segment1_m, segment2_m, segment3_m, path = self.get_path(intermidiate_m, goal_m, is_forward=True)
+                block_volume2 = self.inflate(path)
+                path2_m = np.vstack((segment1_m, segment2_m, segment3_m))
+                smooth_path_m2 = self.get_smooth_path(path=path2_m, len1=len(segment1_m), len3=len(segment3_m))
+                block_volume2_m = self.convert_idx2meter(self.block_volume[drone_idx])
+
+                self.block_volume[drone_idx] = np.vstack((block_volume1,block_volume2))
+                self.paths_m[drone_idx] = np.vstack((path1_m, path2_m))
+                self.smooth_path_m[drone_idx] = np.vstack((smooth_path_m1, smooth_path_m2))
+                self.block_volumes_m[drone_idx] = np.vstack((block_volume1_m, block_volume2_m))
                 return 1
             except:
                 print(' No Path Found! agent = '+str( drone_idx)+' from '+str(start_title)+ ' to '+ str(goal_title)+' start:'+str(start_m)+' goal:'+str(goal_m) + ' ')
-                print('at_base = ', at_base )
                 return 0
-
-
-

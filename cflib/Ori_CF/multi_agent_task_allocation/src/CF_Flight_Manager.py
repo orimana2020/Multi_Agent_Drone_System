@@ -6,12 +6,15 @@ from cflib.crazyflie.swarm import Swarm
 from cflib.Ori_CF.fly_CF.Trajectory import Generate_Trajectory, upload_trajectory
 
 class CF_flight_manager(object):
-    def __init__(self, uri_list):
+    def __init__(self, uri_list, base):
         self.drone_num = len(uri_list)
         uris = set(uri_list)
+        self.base = base
         self.uri_dict = dict()
+        self.reversed_uri_dict = dict()
         for i  in range(len(uri_list)):
             self.uri_dict[i] = uri_list[i]
+            self.reversed_uri_dict[uri_list[i]] = i
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
         self.swarm = Swarm(uris, factory=factory)
@@ -35,21 +38,35 @@ class CF_flight_manager(object):
         commander.takeoff(1.0, 2.0)
         time.sleep(3.0) 
 
+    def _go_to_base(self, scf):
+        cf = scf.cf
+        commander = cf.high_level_commander
+        x,y,z = self.base[self.reversed_uri_dict[scf.cf.link_uri]]
+        commander.go_to(x, y, z, yaw=0, duration_s=3)
+        time.sleep(3)
 
     def _execute_trajectory(self, scf, waypoints): 
         cf = scf.cf
         commander = cf.high_level_commander 
-        x, y, z = waypoints[0]
-        print('start wp = ', waypoints[0])
-        commander.go_to(x, y, z, yaw=0, duration_s=1)
-        time.sleep(1)
+        # x, y, z = waypoints[0]
+        # print('start wp = ', waypoints[0])
+        # commander.go_to(x, y, z, yaw=0, duration_s=1)
+        # time.sleep(1)
+        if len(waypoints) > 30:
+            waypoints1 = waypoints[0:30]
+            waypoints2 = waypoints[30:]
+            wp_list = [waypoints1, waypoints2]
+        else:
+            wp_list = [waypoints]
+
         try:
-            trajectory_id = 1
-            traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False, is_smoothen=True)
-            traj_coef = traj.poly_coef
-            duration = upload_trajectory(cf, trajectory_id ,traj_coef)
-            commander.start_trajectory(trajectory_id, 1.0, False)
-            time.sleep(duration)
+            for waypoints in wp_list:
+                trajectory_id = 1
+                traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False, is_smoothen=True)
+                traj_coef = traj.poly_coef
+                duration = upload_trajectory(cf, trajectory_id ,traj_coef)
+                commander.start_trajectory(trajectory_id, 1.0, False)
+                time.sleep(duration)
         except:
             print('failed to execute trajectory')
     

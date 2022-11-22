@@ -17,12 +17,14 @@ def main(uri_list,drone_num):
     retreat_range = 0.7
     path_planner = Trajectory(x_span, y_span ,z_span ,drone_num=ta.drone.drone_num, res=0.1, safety_distance=safety_distance_trajectory, retreat_range=retreat_range)
     fig = get_figure(targets, ta.drone)
-    fc = CF_flight_manager(uri_list)
+    fc = CF_flight_manager(uri_list, ta.drone.base)
 
     # take off
     threads = fc.swarm.parallel_safe(fc.take_off)
+    threads = fc.swarm.parallel_safe(fc._go_to_base)
     for i in range(len(threads)):
         fc.open_threads[i] = threads[i]
+    
     # go to base position
     # ?
     start = []
