@@ -4,39 +4,73 @@ import numpy as np
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
 from cflib.Ori_CF.fly_CF.Trajectory import Generate_Trajectory, upload_trajectory
+import params
 
-class CF_flight_manager(object):
-    def __init__(self, uri_list, base):
-        self.drone_num = len(uri_list)
-        uris = set(uri_list)
-        self.base = base
+class Flight_manager(object):
+    def __init__(self, drone_num):
+        self.drone_num = drone_num
+        self.uri_list = params.uri_list[:self.drone_num]
+        self.base = params.base
         self.uri_dict = dict()
         self.reversed_uri_dict = dict()
-        for i  in range(len(uri_list)):
-            self.uri_dict[i] = uri_list[i]
-            self.reversed_uri_dict[uri_list[i]] = i
+        for i  in range(len(self.uri_list)):
+            self.uri_dict[i] = self.uri_list[i]
+            self.reversed_uri_dict[self.uri_list[i]] = i
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
-        self.swarm = Swarm(uris, factory=factory)
+        self.swarm = Swarm(set(self.uri_list), factory=factory)
         self.swarm.open_links()
         self.swarm.parallel_safe(self.activate_high_level_commander)
         self.swarm.reset_estimators()
-        self.open_threads = []
-        self.goal = []
-        for _ in range(len(uri_list)):
-            self.open_threads.append([])
-            self.goal.append([])
-
+        self.open_threads = [[]] * self.drone_num
+        self.sleep_time = params.sleep_time
+        self.smooth_points_num = params.points_in_smooth_params
+        self.max_dist2goal = params.dist_to_goal
        
     def activate_high_level_commander(self, scf):
         scf.cf.param.set_value('commander.enHighLevel', '1')
 
+    def wait_thread_killed(self, drone_idx):
+        """
+        wait until all thread are killed (drone_idx = 'all')
+        wait until specific thread is killed(e.g. drone_idx = 1)
+        """
+        if drone_idx == 'all':
+            thread_alive = True
+            while thread_alive:
+                thread_alive = False
+                for thread in self.open_threads:
+                    if thread.is_alive():
+                        thread_alive = True
+                time.sleep(1)
+                print('-- waiting until all threads are killed')
+            print('all threads dead') 
+        else:
+            thread_alive = True
+            while thread_alive:
+                thread_alive = False
+                if self.open_threads[drone_idx].is_alive():
+                    thread_alive = True
+                time.sleep(1)
+                print(f'waiting until thread {drone_idx} is killed')
+            print(f'thread {drone_idx} is killed') 
 
-    def take_off(self, scf):
+
+    def _take_off(self, scf):
         cf = scf.cf
         commander = cf.high_level_commander
-        commander.takeoff(1.0, 2.0)
+        commander.takeoff(params.take_off_height, 2.0)
         time.sleep(3.0) 
+    
+    def take_off_swarm(self):
+        threads = self.swarm.parallel_safe(self._take_off)
+        for i in range(len(threads)):
+            self.open_threads[i] = threads[i]
+        self.wait_thread_killed('all')
+        threads = self.swarm.parallel_safe(self._go_to_base)
+        for i in range(len(threads)):
+            self.open_threads[i] = threads[i]
+        self.wait_thread_killed('all')
 
     def _go_to_base(self, scf):
         cf = scf.cf
@@ -45,93 +79,76 @@ class CF_flight_manager(object):
         commander.go_to(x, y, z, yaw=0, duration_s=3)
         time.sleep(3)
 
-    def _execute_trajectory(self, scf, waypoints): 
+    def _execute_trajectory(self, scf, waypoints, drone_idx): 
         cf = scf.cf
         commander = cf.high_level_commander 
-        # x, y, z = waypoints[0]
-        # print('start wp = ', waypoints[0])
-        # commander.go_to(x, y, z, yaw=0, duration_s=1)
-        # time.sleep(1)
-        if len(waypoints) > 30:
-            waypoints1 = waypoints[0:30]
-            waypoints2 = waypoints[30:]
+        if len(waypoints) > self.smooth_points_num:
+            waypoints1 = waypoints[:self.smooth_points_num]
+            waypoints2 = waypoints[self.smooth_points_num:]
             wp_list = [waypoints1, waypoints2]
         else:
             wp_list = [waypoints]
-
         try:
             for waypoints in wp_list:
+                x, y, z = waypoints[0]
+                commander.go_to(x, y, z, yaw=0, duration_s=0.5)
+                time.sleep(0.5)
                 trajectory_id = 1
                 traj = Generate_Trajectory(waypoints, velocity=1, plotting=0, force_zero_yaw=False, is_smoothen=True)
                 traj_coef = traj.poly_coef
+                print(traj_coef)
                 duration = upload_trajectory(cf, trajectory_id ,traj_coef)
                 commander.start_trajectory(trajectory_id, 1.0, False)
-                time.sleep(duration)
+                time.sleep(duration*1.2)
         except:
             print('failed to execute trajectory')
+
     
     def execute_trajectory_mt(self, drone_idx, waypoints):# send trajectory with multi thread mode
-        thread = self.swarm.trajectory_to_drone(self._execute_trajectory, self.uri_dict[drone_idx], waypoints)
+        thread = self.swarm.daemon_process(self._execute_trajectory, self.uri_dict[drone_idx], [waypoints, drone_idx])
         self.open_threads[drone_idx] = thread
-        self.goal[drone_idx] = waypoints[-1]
     
     def get_position(self, drone_idx):
         scf = self.swarm._cfs[self.uri_dict[drone_idx]]
         self.swarm.get_single_cf_estimated_position(scf)
 
         
-    def reached_goal(self, drone_idx):
+    def reached_goal(self, drone_idx, goal):
         try:
             self.get_position(drone_idx)
             current_x, current_y, current_z = self.swarm._positions[self.uri_dict[drone_idx]]
-            dist2goal = ((current_x - self.goal[drone_idx][0])**2 + (current_y - self.goal[drone_idx][1])**2 +(current_z - self.goal[drone_idx][2])**2 )**0.5
-            print(f'distance to goal of drone {drone_idx} is : {dist2goal}')
-            if dist2goal < 0.3:
+            dist2goal = ((current_x - goal[0])**2 + (current_y - goal[1])**2 +(current_z - goal[2])**2 )**0.5
+            if dist2goal < self.max_dist2goal:
                 return 1
             else:
                 return 0
         except:
             return 0
 
-    def land(self, scf):
+    def _land(self, scf, drone_idx):
+        self.wait_thread_killed(drone_idx)
         cf = scf.cf
         commander = cf.high_level_commander
         commander.land(0.0, 4.0)
         time.sleep(4)
         commander.stop()
-
-
-# --------------------------- Examples --------------------------------
-
-
-
-
-
-
-
-
-# if __name__ == '__main__':
-    # init mission
     
+    def land(self, drone_idx, drones=None): 
+        if drone_idx == 'all':
+            for i in range(len(drones)):
+                if drones[i].is_active:
+                    thread = self.swarm.daemon_process(self._land, self.uri_dict[i], [i])
+                    self.open_threads[i] = thread   
+            self.wait_thread_killed(drone_idx)     
+            self.swarm.close_links()
+        else:
+            thread = self.swarm.daemon_process(self._land, self.uri_dict[drone_idx], [drone_idx])
+            self.open_threads[drone_idx] = thread 
 
-    # mission
-    # swarm.parallel_safe(take_off)
-    # t1 = swarm.trajectory_to_drone(execute_trajectory, uri1, waypoints= get_wp_circle(is_reversed=False))
-    # open_threads.append(t1)
-    # t2 = swarm.trajectory_to_drone(execute_trajectory, uri1, waypoints= get_wp(offset=(-0.35,-1),is_reversed=True))
-    # open_threads.append(t2)
+    
+    def sleep(self):
+        time.sleep(self.sleep_time)
 
-    # thread_running = True
-    # while thread_running : # check if all threads are finished before sending new commands
-    #     thread_running = False
-    #     for thread in open_threads:
-    #         if thread.is_alive():
-    #             thread_running = True
-        # print('main thread is running in background')
-    #     time.sleep(0.1)
-    # open_threads = []      
-        
-    # end mission
-    # swarm.parallel_safe(land)
-    # swarm.close_links()
+
+
 

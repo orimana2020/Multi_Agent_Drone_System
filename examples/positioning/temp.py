@@ -1,6 +1,13 @@
 import numpy as np
 
 
-a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-for row in a:
-    print(row[2])
+def func(args_list=None):
+    args = ['a','b','c']
+    if args_list:
+        args += args_list
+           
+    print(args)    
+func()
+
+
+# print(['a','v'] + [np.array([[1,2,3],[4,5,6]])])

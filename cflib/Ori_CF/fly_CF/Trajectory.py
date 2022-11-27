@@ -463,7 +463,6 @@ class Uploader:
 def upload_trajectory(cf,trajectory_id ,trajectory):
     trajectory_mem = cf.mem.get_mems(MemoryElement.TYPE_TRAJ)[0]
     trajectory_mem.trajectory = []
-
     total_duration = 0
     for row in trajectory:
         duration = row[0]
@@ -480,41 +479,5 @@ def upload_trajectory(cf,trajectory_id ,trajectory):
         sys.exit(1)
     cf.high_level_commander.define_trajectory(trajectory_id, 0, len(trajectory_mem.trajectory))
     return total_duration
-
-
-
-
-# ---------------------------------------------- Examples -------------------------------------------------
-
-def get_wp_circle(is_reversed=False):
-    wp_orig = []
-    radius = 1
-    angles = np.linspace(0,1.5*np.pi, 20)
-    z=1
-    for i in angles:
-        # z += 0.05
-        wp_orig.append([-0.5+radius*np.sin(i),radius*np.cos(i), z]) 
-    wp_orig = np.array(wp_orig)
-    if is_reversed:
-        return wp_orig[::-1]
-    return wp_orig
-
-
-
-if __name__ == '__main__':
-    wp_orig = get_wp_circle(is_reversed=False)
-    print(wp_orig)
-    trajectory = Generate_Trajectory(wp_orig, velocity=1, plotting=1, force_zero_yaw = True)
-    print(len(trajectory.poly_coef))
-    
-
-
-
-
-
-
-
-
-
 
 

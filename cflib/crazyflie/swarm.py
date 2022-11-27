@@ -211,19 +211,33 @@ class Swarm:
         except Exception:
             pass
 
-
-    def trajectory_to_drone(self, func, uri, waypoints ,args_dict=None):
+    def daemon_process(self, func, uri, arg_list=None):
         reporter = self.Reporter()
-        args = [func, reporter, self._cfs[uri] , waypoints]
+        args = [func, reporter, self._cfs[uri]] 
+        if arg_list:
+            args += arg_list
         # daemon=True allows the main thread keep running 
         thread = Thread(target=self._thread_function_wrapper, args=args, daemon=True)
         thread.start()
         if reporter.is_error_reported():
             first_error = reporter.errors[0]
             raise Exception('One or more threads raised an exception when '
-                            'executing parallel task') from first_error            
+                            'executing parallel task') from first_error 
+        return thread
+
+
+    # def daemon_process(self, func, uri, waypoints ,args_dict=None):
+    #     reporter = self.Reporter()
+    #     args = [func, reporter, self._cfs[uri] , waypoints]
+    #     # daemon=True allows the main thread keep running 
+    #     thread = Thread(target=self._thread_function_wrapper, args=args, daemon=True)
+    #     thread.start()
+    #     if reporter.is_error_reported():
+    #         first_error = reporter.errors[0]
+    #         raise Exception('One or more threads raised an exception when '
+    #                         'executing parallel task') from first_error            
             
-        return thread    
+    #     return thread    
             
 
     def parallel_safe(self, func, args_dict=None):
@@ -232,6 +246,7 @@ class Swarm:
         One thread per Crazyflie is started to execute the function. The
         threads are joined at the end and if one or more of the threads raised
         an exception this function will also raise an exception.
+        while any of these threads running, the main thread is paused.
         For a more detailed description of the arguments, see `sequential()`
         :param func: The function to execute
         :param args_dict: Parameters to pass to the function
