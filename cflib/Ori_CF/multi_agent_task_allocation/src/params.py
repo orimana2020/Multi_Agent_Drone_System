@@ -46,6 +46,7 @@ if mode == 'sim':
     linear_velocity = 2.5
     # base = [ (1.5,-0.7,1), (1.5,0,1), (1.5,0.7,1),(-1,0.2,1), (-1,0.2,1)][:drone_num] # (x,y,z) -> same coords definds in launch file
     base = [(0,-0.6,1), (0,0,1), (0,0.6,1)][:drone_num]
+    uri_list = [[0]] * drone_num
 
 # ------------------ Allocation 
 k_init = 5 
@@ -83,7 +84,7 @@ elif mode == 'cf':
 
 data_source = 'circle'   
 if data_source == 'circle':
-    targets_num_gen = 7
+    targets_num_gen = 25
     t = np.linspace(0, 2*np.pi-2*np.pi/targets_num_gen, targets_num_gen)
     radius = 0.6
     depth = 2
