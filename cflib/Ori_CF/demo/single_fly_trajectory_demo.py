@@ -10,7 +10,7 @@ from cflib.crazyflie.mem import Poly4D
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
-from cflib.Ori_CF.fly_CF.Trajectory import Generate_Trajectory
+from cflib.Ori_CF.multi_agent_task_allocation.src.CF_Trajectory import Generate_Trajectory
 
 
 
