@@ -74,12 +74,14 @@ class Swarm:
         self._cfs = {}
         self._is_open = False
         self._positions = dict()
+        self.battery = dict()
         self.logger = {}
+        self.battery_logger = {}
 
         for uri in uris:
             self._cfs[uri] = factory.construct(uri)
             self.logger[self._cfs[uri]] = None
-
+            self.battery_logger[self._cfs[uri]] = None
 
     def open_links(self):
         """
@@ -124,6 +126,19 @@ class Swarm:
                 z = entry[1]['stateEstimate.z']
                 self._positions[scf.cf.link_uri] = SwarmPosition(x, y, z)
                 break
+    
+    def get_battert_voltage(self, scf):
+        if self.battery_logger[scf] == None:
+            log_config = LogConfig(name='pm', period_in_ms=10)
+            log_config.add_variable('pm.vbat', 'float')
+            self.battery_logger[scf] = SyncLogger(scf, log_config)
+            self.battery_logger[scf].connect()
+        for entry in self.battery_logger[scf]:
+            if not self.battery_logger[scf]._queue.empty():
+                entry = self.battery_logger[scf]._queue.queue[-1]
+            x = entry[1]['pm.vbat']
+            self.battery[scf.cf.link_uri] = x 
+            break        
 
 
     def get_single_cf_estimated_position(self, scf):
@@ -143,7 +158,8 @@ class Swarm:
             z = entry[1]['stateEstimate.z']
             self._positions[scf.cf.link_uri] = [x,y,z] #SwarmPosition(x, y, z)
             break
-
+    
+    
            
     def get_estimated_positions(self):
         """
