@@ -1,17 +1,6 @@
 import numpy as np
 import os
 # ----------------------------- addtional functions for params ----------------- #
-def grid_shape():
-    n = 20
-    z_col = np.linspace(1,2.2,4)
-    y_row = np.linspace(-3,3,5)
-    x = 3.5
-    targets = []
-    for z in z_col:
-        for y in y_row:
-            targets.append([x,y,z])
-    return np.array(targets)   
-
 def get_span(targetpos, base, resolution):
     z_min, z_max = 0, max( max(targetpos[:,2]), max(np.array(base)[:,2]))
     z_max = z_max + 0.2 # add offset for c_space
@@ -30,35 +19,38 @@ def get_span(targetpos, base, resolution):
 
 # ------------------------------------------------------------------------------ #
 
-mode  = 'cf' # 'cf'
+mode  = 'cf' # 'cf' / 'sim'
 
-# -------------------- CF
+# -------------------- CF -----------------------#
 uri1 = 'radio://0/80/2M/E7E7E7E7E1'
 uri2 = 'radio://0/80/2M/E7E7E7E7E2'
 uri3 = 'radio://0/80/2M/E7E7E7E7E3'
 uri4 = 'radio://0/80/2M/E7E7E7E7E4'
-uri_list = [uri1, uri4] # index 0- most right drone 
+uri_list = [uri1] # index 0- most right drone 
 
-# --------------------- Drones 
-# ------drone CF
+# --------------------- Drones --------------------#
+# -----------Drone CF
 if mode == 'cf':
     drone_num = len(uri_list)
     magazine = [3,3,3,3,3,3,3,3,3][:drone_num]
     linear_velocity = 1.5
     base = [(0,-0.6,1), (0,0,1), (0,0.6,1)][:drone_num]# (x,y,z)   -> right to left order
 
-#-----drone sim
+#-----------Drone Sim
 if mode == 'sim':
     drone_num = 3
-    magazine = [3,3,3,3,3,3,3,3,3][:drone_num]
+    magazine = [5,4,3,3,3,3,3,3,3][:drone_num]
     linear_velocity = 2.5
     # base = [ (1.5,-0.7,1), (1.5,0,1), (1.5,0.7,1),(-1,0.2,1), (-1,0.2,1)][:drone_num] # (x,y,z) -> same coords definds in launch file
     base = [(0,-0.6,1), (0,0,1), (0,0.6,1)][:drone_num] # (x,y,z)   -> right to left order
     uri_list = [[0]] * drone_num
 
-# ------------------ Allocation 
+# ------------------ Allocation --------------------#
 k_init = 5 
 threshold_factor = 0.8
+avoid_downwash = True
+downwash_distance = np.array([0.2, 0.2, 1]) # [m]
+
 uri_state_mat_sim = '/src/rotors_simulator/multi_agent_task_allocation/src'
 uri_targetpos_cf = '/cflib/Ori_CF/multi_agent_task_allocation/src'
 if mode == 'sim':
@@ -83,9 +75,6 @@ offset_x_dist_target = 0.1 # [m]
 segments_num = 15 # max = 30
 points_in_smooth_params = segments_num + 1
 
-downwash_half_volume = np.array([0.2, 0.2, 1]) # [m]
-account_for_downwash = 1
-
 if mode == 'sim':
     dist_to_target = 0.05
     dist_to_base = 0.1
@@ -103,7 +92,7 @@ elif mode == 'cf':
 
 data_source = 'circle'   
 if data_source == 'circle':
-    targets_num_gen = 15
+    targets_num_gen = 25
     t = np.linspace(0, 2*np.pi-2*np.pi/targets_num_gen, targets_num_gen)
     radius = 0.6
     depth = 2
@@ -111,19 +100,16 @@ if data_source == 'circle':
     targetpos = np.stack([depth*np.ones([targets_num_gen]) , radius * np.cos(t), radius * np.sin(t) + z_offset] , axis=-1)
 elif data_source == 'dataset':
     targetpos = np.load(str(os.getcwd()) + target_uri)
-elif data_source == 'salon':
-    targetpos  = grid_shape() 
-  
-  
-targetpos -= np.array([offset_x_dist_target, 0 ,0]) 
+
+targetpos_offset = targetpos - np.array([offset_x_dist_target, 0 ,0]) 
+targetpos = np.array([target for target in targetpos if target[2] > floor_safety_distance + resolution * 2])
 targets_num, _ = targetpos.shape
 mean_x_targets_position = np.sum(targetpos[:,0]) / targets_num
 span, limits, limits_idx = get_span(targetpos, base, resolution)
 print(limits_idx)
 
-
 # --------------------- General
-sleep_time = 0.05
+sleep_time = 0.2
 colors = ['r', 'g', 'b', 'peru', 'yellow', 'lime', 'navy', 'purple', 'pink','grey']
 
 # ----------------- Plotting

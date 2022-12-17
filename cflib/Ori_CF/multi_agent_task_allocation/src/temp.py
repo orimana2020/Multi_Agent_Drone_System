@@ -1,6 +1,4 @@
-import time
+import numpy as np
 
-title = 'targets'
-
-x = 0.2 if title == 'target' else 0.1
-print(x)
+pos = np.load('lps_static_pos_optimal_config_40.npy')
+print(pos)
