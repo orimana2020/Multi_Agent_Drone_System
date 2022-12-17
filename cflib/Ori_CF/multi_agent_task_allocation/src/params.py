@@ -26,7 +26,7 @@ uri1 = 'radio://0/80/2M/E7E7E7E7E1'
 uri2 = 'radio://0/80/2M/E7E7E7E7E2'
 uri3 = 'radio://0/80/2M/E7E7E7E7E3'
 uri4 = 'radio://0/80/2M/E7E7E7E7E4'
-uri_list = [uri1] # index 0- most right drone 
+uri_list = [uri3] # index 0- most right drone 
 
 # --------------------- Drones --------------------#
 # -----------Drone CF
