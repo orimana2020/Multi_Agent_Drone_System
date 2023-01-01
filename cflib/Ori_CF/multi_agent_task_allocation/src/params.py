@@ -107,8 +107,6 @@ elif data_source == 'dataset':
 elif data_source == 'first_exp_cyrcle':
     targetpos = np.array([[1.49,0.22,1.26],[1.52,-0.23,1.14],[1.53,-0.35,0.89],[1.54,-0.45,0.59], [1.54,-0.34,0.24],[1.5,0.07,0.01],[1.47,0.62,0.18],[1.45,0.75,0.47],[1.45,0.75,0.89],[1.46,0.57,1.12]])
     targetpos = targetpos + np.array([0.6 ,0 ,0.85]) # LPS correction
-# elif data_source == 'hight_exp':
-#     targetpos = np.array([[1.5,0,2.1],[1.5,0,2.3]])
 
 targetpos = targetpos - np.array([offset_x_dist_target, 0 ,0]) 
 targetpos = np.array([target for target in targetpos if target[2] > floor_safety_distance + resolution * 2])
