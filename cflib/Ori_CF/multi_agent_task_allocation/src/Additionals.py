@@ -4,6 +4,7 @@ import random
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import params 
+import logging
 
 class Drone_Manager(object):
     def __init__(self, uris, base, full_magazine, ta):
@@ -117,15 +118,15 @@ class Drone(object):
         self.at_base = 1
         self.is_active = True
         self.battery = None
-        self.path_idx = None
-        self.path_m = None
-        self.current_target = None
-        self.block_volume_idx = None
-        self.block_volume_base = None
-        self.block_volume_m = None
-    
-        
-                
+        self.timer = 0
+        self.time_at_base = 0
+        self.time_to_target = 0
+        self.time_to_base = 0
+        self.time_at_target = 0
+        self.visited_targets_idx = []
+        self.visited_targets_num = 0
+
+                 
 class get_figure(object):
     def __init__(self):
         self.targetpos = params.targetpos
@@ -137,6 +138,7 @@ class get_figure(object):
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
         self.ax.set_zlabel('z')
+        self.frame_counter = 0
         # self.ax.view_init(elev=0, azim=90)
         elev, azim = params.elvazim
         self.ax.view_init(elev=elev, azim=azim)
@@ -168,9 +170,9 @@ class get_figure(object):
                 if self.smooth_path_scatter:
                     self.ax.scatter3D(path_planner.smooth_path_m[j][:,0],path_planner.smooth_path_m[j][:,1],path_planner.smooth_path_m[j][:,2],s= 25, c='g',alpha=1, depthshade=False)
                 if self.block_volume:
-                    self.ax.scatter3D(path_planner.block_volumes_m[j][:,0], path_planner.block_volumes_m[j][:,1], path_planner.block_volumes_m[j][:,2], s= 10, c='g',alpha=0.1,depthshade=False)
+                    self.ax.scatter3D(path_planner.block_volumes_m[j][:,0], path_planner.block_volumes_m[j][:,1], path_planner.block_volumes_m[j][:,2], s= 10, c='g',alpha=0.01,depthshade=False)
                 if self.constant_blocking_area:
-                    self.ax.scatter3D(path_planner.constant_blocking_area_m[j][:,0], path_planner.constant_blocking_area_m[j][:,1], path_planner.constant_blocking_area_m[j][:,2], s= 10, c='m',alpha=0.1,depthshade=False)
+                    self.ax.scatter3D(path_planner.constant_blocking_area_m[j][:,0], path_planner.constant_blocking_area_m[j][:,1], path_planner.constant_blocking_area_m[j][:,2], s= 10, c='m',alpha=0.01,depthshade=False)
                 if self.plot_block_volume_floor_m:
                     self.ax.plot(path_planner.block_volume_floor_m[:,0],path_planner.block_volume_floor_m[:,1], path_planner.block_volume_floor_m[:,2], c='grey', linewidth=4)
     def show(self):
@@ -199,6 +201,23 @@ class get_figure(object):
         self.show()
 
 
+class Logger(object):
+    def __init__(self, file_name):
+        logging.basicConfig(level=logging.DEBUG, filename=file_name, filemode='w',
+                    format="%(asctime)s - %(levelname)s - %(message)s")
+        
+        self.logger = logging.getLogger(__name__)
+        self.logger
+        handler = logging.FileHandler(file_name)
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.DEBUG)
+    
+    def log(self, msg):
+        self.logger.debug(msg)
+        print(msg)
+
 
 def generate_fake_error_mapping(): 
     x_min,x_max,y_min,y_max,z_min,z_max = params.limits_idx
@@ -219,7 +238,6 @@ def generate_fake_error_mapping():
                 error_arr[z,y,x] = round(total_dist_score * (worst_accuracy - best_accuracy) + best_accuracy)
     print(f'error arr shape: {error_arr.shape}')
     return error_arr
-
 
 class Env(object):
     def __init__(self, drone_performace, drone_num):

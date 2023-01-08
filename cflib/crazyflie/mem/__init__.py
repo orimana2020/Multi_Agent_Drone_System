@@ -67,6 +67,10 @@ CMD_INFO_VER = 0
 CMD_INFO_NBR = 1
 CMD_INFO_DETAILS = 2
 
+# added to avoid overlapping errors
+logging.basicConfig(level=logging.DEBUG, filename='demo', filemode='w',
+            format="%(asctime)s - %(levelname)s - %(message)s")
+        
 logger = logging.getLogger(__name__)
 
 
